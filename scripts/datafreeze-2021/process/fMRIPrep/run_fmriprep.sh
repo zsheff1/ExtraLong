@@ -5,7 +5,7 @@ mkdir -p $LOGS_DIR
 
 project=/project/ExtraLong
 input_dir=${project}/data/datafreeze-2021/bids_directory
-output_dir=${project}/data/datafreeze-2021/
+output_dir=${project}/data/datafreeze-2021/fmriprep
 work_dir=${project}/data/datafreeze-2021/work
 fs_dir=${project}/data/datafreeze-2021/FreeSurfer
 js_dir=${project}/scripts/datafreeze-2021/process/fMRIPrep/jobscripts
@@ -36,9 +36,10 @@ for img in $imgList; do
 		SINGULARITYENV_TEMPLATEFLOW_HOME=/templateflow \\
 		SINGULARITYENV_SURFER_FRONTDOOR=1 \\
 		singularity run --cleanenv \\
-		-B ${input_dir}:/bids \\
+		-B ${input_dir}:/bids:ro \\
 		-B ${output_dir}:/out \\
-		-B ${fs_dir}:/freesurfer \\
+		-B ${fs_dir}/${subj}/${sess}:/freesurfer/${subj} \\
+                -B /appl/freesurfer-7.1.1/subjects/fsaverage:/freesurfer/fsaverage:ro \\
 		-B ${templateflow}:/templateflow \\
 		-B ${filterfile}:/session_filter.json \\
 		-B ${work_dir}/${subj}_${sess}:/work \\
@@ -51,8 +52,7 @@ for img in $imgList; do
 		--stop-on-first-crash \\
 		--skip-bids-validation \\
 		--work-dir /work \\
-		--fs-no-reconall \\
-		--fs-subjects-dir /freesurfer/${subj}/${sess} \\
+		--fs-subjects-dir /freesurfer \\
 		--anat-only \\
 		--random-seed 1 \\
 		--n_cpus 1
