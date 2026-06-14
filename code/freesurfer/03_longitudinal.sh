@@ -9,12 +9,14 @@ NTHREADS=4
 
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}"
 
-find "${DATA_DIR}" -mindepth 2 -maxdepth 2 -type d -name "Template-*" -printf '%f\n' | while read -r template; do
+find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" ! -name "sub-*_ses-*" -printf '%f\n' |
+while read -r sub; do
 
-    sub="sub-${template#Template-}"
+    find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "${sub}_ses-*" ! -name "*.long.sub-*" -printf '%f\n' |
+    while read -r sub_ses; do
 
-    find "${DATA_DIR}/${sub}" -maxdepth 1 -type d -name "ses-*" ! -name "*.long.Template-*" -printf '%f\n' | sort | while read -r ses; do
-        
+        ses="${sub_ses#${sub}_}"
+
         jobscript_path="${JOBSCRIPT_DIR}/${sub}_${ses}.sh"
 
         cat <<-EOF > "${jobscript_path}"
@@ -25,22 +27,20 @@ find "${DATA_DIR}" -mindepth 2 -maxdepth 2 -type d -name "Template-*" -printf '%
 		#BSUB -o ${LOG_DIR}/${sub}_${ses}.o
 		#BSUB -e ${LOG_DIR}/${sub}_${ses}.e
 
-		export OMP_NUM_THREADS=${NTHREADS}
+		module load apptainer
 
-		module load freesurfer/8.2.0
-
-		export FREESURFER_HOME="${FREESURFER_HOME}"
-		source "${FREESURFER_HOME}/SetUpFreeSurfer.sh"
-		export SURFER_FRONTDOOR=1
-		export FS_LICENSE="${LICENSE}"
-		export SUBJECTS_DIR="${OUTPUT_DIR}/${sub}"
-
-		${FREESURFER_HOME}/bin/recon-all \\
-		-long "${ses}" "${template}" \\
-		-parallel \\
-		-openmp ${NTHREADS} \\
-		-all
-
+		apptainer exec \\
+		    --bind "${DATA_DIR}:/data_dir" \\
+		    --bind "${LICENSE}:/license.txt" \\
+		    --env FS_LICENSE=/license.txt \\
+		    --env SURFER_FRONTDOOR=1 \\
+		    --env OMP_NUM_THREADS=${NTHREADS} \\
+		    --env SUBJECTS_DIR=/data_dir \\
+		    "${CONTAINER}" \\
+		    recon-all \\
+		    -long "${sub}_${ses}" "${sub}" \\
+		    -openmp ${NTHREADS} \\
+		    -all
 		EOF
 
         chmod 775 "${jobscript_path}"
