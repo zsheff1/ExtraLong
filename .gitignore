@@ -12,3 +12,4 @@
 *.Rhistory
 work/
 filterfiles/
+*logs/
