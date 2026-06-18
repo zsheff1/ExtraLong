@@ -4,13 +4,18 @@ import flywheel
 import pandas as pd
 
 # Set Constants
-PROJECT_LABELS = [
+PROJECT_LABELS_1 = [
     "22q_Midline_834246",
     "7T_GluCEST_Age_843818",
+    "EFR01",
     "LongGluCEST_843329",
+    "MOTIVE",
+]
+PROJECT_LABELS_2 = [
+    "MIND_856432",
+    "RSVP_855714",
 ]
 PROJECT_LABEL_PBN = "SSBC_844685"
-PROJECT_LABEL_MIND = "MIND_856432"
 
 PATH_PROJECT = Path("/") / "project" / "ExtraLong"
 PATH_CODE_DATA = PATH_PROJECT / "code" / "data"
@@ -31,14 +36,12 @@ COLUMNS_FLYWHEEL = [
 COLUMNS_OUTPUT = ["bblid", "scanid", "path_old", "path_new"]
 COLUMNS_IMGLOOK = ["bblid", "scanid", "protocol", "sourceid", "doscan"]
 
-
 # Define functions
 def make_path_new(df):
     return [
         Path("/project/ExtraLong") / f"sub-{bblid:06d}" / f"ses-{scanid:05d}"
         for bblid, scanid in zip(df["bblid"], df["scanid"])
     ]
-
 
 def query_bblsub2(path, strategy, protocol=None, glob="sub-*/ses-*", session=None):
     paths = path.glob(glob)
@@ -89,7 +92,6 @@ def query_bblsub2(path, strategy, protocol=None, glob="sub-*/ses-*", session=Non
     )
     return output
 
-
 def query_flywheel(fw, project_labels, group="bbl"):
     if isinstance(project_labels, str):
         project_labels = [project_labels]
@@ -111,13 +113,11 @@ def query_flywheel(fw, project_labels, group="bbl"):
                     session_label,
                 )
 
-
 # Connect to flywheel
 with open(PATH_API, "r") as file:
     api_key = file.read()
 
 fw = flywheel.Client(api_key)
-
 
 # What's expected from imglook?
 n9498 = pd.read_csv(
@@ -137,7 +137,13 @@ imglook = (
     .loc[
         lambda df: df["bblid"].isin(n9498)
         & ~df["scanstat"].str.contains(r"IS5\w?", na=False)
-        & ~df["protocol"].isin(["842909 - TRANSCENDS_D1", "854294 - hyperfine_pilot"]),
+        & ~df["protocol"].isin([
+            "842909 - TRANSCENDS_D1",
+            "849188 - PRONET",
+            "854294 - hyperfine_pilot",
+            "855194 - SFARI_Penn",
+            "855446 - cerebellothalamic_7t",
+        ]),
         COLUMNS_IMGLOOK,
     ]
     .sort_values(["bblid", "scanid"])
@@ -145,14 +151,14 @@ imglook = (
 )
 
 # What's available on bblsub2?
-image_evol = query_bblsub2(
+image_bblsub2_evol = query_bblsub2(
     path=Path("/") / "project" / "bbl_gur_evolpsy",
     strategy="many_to_one",
     protocol="833922 - EvolPsy",
     session="EVOL1",
 )
 
-image_pnc = query_bblsub2(
+image_bblsub2_pnc = query_bblsub2(
     path=Path("/") / "project" / "bbl_gur_pnc" / "data",
     strategy="many_to_many",
     protocol=[
@@ -164,7 +170,7 @@ image_pnc = query_bblsub2(
     glob="*/bids_directory/sub-*/ses-*",
 )
 
-image_extralong_2021_unfiltered = query_bblsub2(
+image_bblsub2_extralong = query_bblsub2(
     path=Path("/")
     / "project"
     / "ExtraLong"
@@ -175,15 +181,15 @@ image_extralong_2021_unfiltered = query_bblsub2(
 )
 
 bblsub2_standalone = (
-    pd.concat([image_evol, image_pnc])
+    pd.concat([image_bblsub2_evol, image_bblsub2_pnc])
     .sort_values(["bblid", "scanid"])
     .reset_index(drop=True)
 )
 
-image_extralong_2021 = (
+image_bblsub2_extralong = (
     pd.merge(
         bblsub2_standalone,
-        image_extralong_2021_unfiltered,
+        image_bblsub2_extralong,
         on=["bblid", "scanid"],
         how="right",
         indicator=True,
@@ -195,32 +201,30 @@ image_extralong_2021 = (
 )
 
 images_bblsub2 = (
-    pd.concat([bblsub2_standalone, image_extralong_2021])
+    pd.concat([bblsub2_standalone, image_bblsub2_extralong])
     .sort_values(["bblid", "scanid"])
     .reset_index(drop=True)
 )
 
 # What's available on flywheel
-image_flywheel_raw = (
+image_flywheel_1 = (
     pd.DataFrame.from_records(
-        query_flywheel(fw, PROJECT_LABELS), columns=COLUMNS_FLYWHEEL
+        query_flywheel(fw, PROJECT_LABELS_1), columns=COLUMNS_FLYWHEEL
     )
     .loc[
         lambda df: (
-            ~df["subject_label"].str.contains(r"PILOT")
-            & df["subject_label"].str.match(r"(\d+)")
-            & df["session_label"].str.match(r"(\d+)")
+            df["subject_label"].str.match(r"^\d+$")
+            & df["session_label"].str.match(r"^\d+$")
         ),
         :,
     ]
     .astype({"subject_label": "Int64", "session_label": "Int64"})
     .reset_index(drop=True)
 )
-
-image_flywheel_unfiltered = (
+image_flywheel_1 = (
     pd.merge(
         imglook,
-        image_flywheel_raw,
+        image_flywheel_1,
         left_on=["bblid", "scanid"],
         right_on=["subject_label", "session_label"],
         how="inner",
@@ -230,7 +234,26 @@ image_flywheel_unfiltered = (
     .loc[:, COLUMNS_OUTPUT]
 )
 
-image_pbn = (
+image_flywheel_2 = (
+    pd.DataFrame.from_records(
+        query_flywheel(fw, PROJECT_LABELS_2), columns=COLUMNS_FLYWHEEL
+    )
+    .loc[
+        lambda df: df["subject_label"].str.contains(r"\d+_\d+"),
+        :
+    ]
+    .drop(columns=["session_label"])
+)
+image_flywheel_2[["bblid", "scanid"]] = image_flywheel_2["subject_label"].str.split("_", expand=True)
+image_flywheel_2 = (
+    image_flywheel_2
+    .rename(columns={"session_id": "path_old"})
+    .astype({"bblid": "Int64", "scanid": "Int64"})
+    .assign(path_new=make_path_new)
+    .loc[:, COLUMNS_OUTPUT]
+)
+
+image_flywheel_pbn = (
     pd.DataFrame.from_records(
         query_flywheel(fw, PROJECT_LABEL_PBN), columns=COLUMNS_FLYWHEEL
     )
@@ -252,62 +275,23 @@ image_pbn = (
     .loc[:, COLUMNS_OUTPUT]
 )
 
-image_mind = (
-    pd.DataFrame.from_records(
-        query_flywheel(fw, PROJECT_LABEL_MIND), columns=COLUMNS_FLYWHEEL
+image_flywheel = (
+    pd.concat([image_flywheel_1, image_flywheel_2, image_flywheel_pbn])
+    .merge(
+        images_bblsub2,
+        on=["bblid", "scanid"],
+        how="outer",
+        indicator=True,
     )
-    .loc[
-        lambda df: df["subject_label"].str.contains(r"\d+_\d+"),
-        :
-    ]
-    .drop(columns=["session_label"])
-)
-image_mind[["bblid", "scanid"]] = image_mind["subject_label"].str.split("_", expand=True)
-image_mind = (
-    image_mind
-    .rename(columns={"session_id": "path_old"})
-    .astype({"bblid": "Int64", "scanid": "Int64"})
-    .assign(path_new=make_path_new)
-    .loc[:, COLUMNS_OUTPUT]
-)
-
-image_flywheel_unfiltered = (
-    pd.concat([image_flywheel_unfiltered, image_pbn, image_mind])
+    .rename(columns={"path_old_x": "path_old", "path_new_x": "path_new"})
+    .loc[lambda df: df["_merge"].eq("left_only"), COLUMNS_OUTPUT]
     .sort_values(["bblid", "scanid"])
     .reset_index(drop=True)
 )
 
 # combine all found images
-image_flywheel = (
-    pd.merge(
-        images_bblsub2,
-        image_flywheel_unfiltered,
-        on=["bblid", "scanid"],
-        how="outer",
-        indicator=True,
-    )
-    .rename(columns={"path_old_y": "path_old", "path_new_y": "path_new"})
-    .loc[lambda df: df["_merge"].eq("right_only"), COLUMNS_OUTPUT]
-    .sort_values(["bblid", "scanid"])
-    .reset_index(drop=True)
-)
-
 images_found = (
     pd.concat([images_bblsub2, image_flywheel])
     .sort_values(["bblid", "scanid"])
     .reset_index(drop=True)
-)
-
-# summarize remaining
-remaining = (
-    pd.merge(imglook, images_found, on=["bblid", "scanid"], how="left", indicator=True)
-    .loc[
-        lambda df: (df["_merge"].eq("left_only") & df["doscan"].gt(LAST_DATAFREEZE)),
-        COLUMNS_IMGLOOK,
-    ]
-    .reset_index(drop=True)
-)
-
-remaining_summary = (
-    remaining["protocol"].value_counts().rename_axis("protocol").reset_index(name="n")
 )
