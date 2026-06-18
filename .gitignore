@@ -1,15 +1,2 @@
-*~
-*data/
-*plots/
-*images/
-*jobscripts/
-*csv/
-*.vscode
-*.DS_Store*
-*.code-workspace
-*tissueClasses.xlsx
-*.history*
-*.Rhistory
-work/
-filterfiles/
-*logs/
+sourcedata/
+derivatives/

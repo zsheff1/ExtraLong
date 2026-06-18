@@ -1,4 +1,6 @@
-*jobscripts/
-*logs/
+jobscripts/
+logs/
 license.txt
 *.sif
+data/
+filterfiles/
