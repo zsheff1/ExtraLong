@@ -11,7 +11,7 @@ NTHREADS=4
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}" "${OUTPUT_DIR}"
 
 # Find all T1w images
-find "${INPUT_DIR}" -type f -path "*/sub-*/ses-*/anat/*T1w.nii.gz" |
+find "${INPUT_DIR}" -mindepth 4 -maxdepth 4 -type f -path "*/sub-*/ses-*/anat/*T1w.nii.gz" |
 while read -r image; do
 
     [[ "${image}" =~ (sub-[0-9]{6})_(ses-[0-9]{5}) ]] || continue

@@ -1,2 +1,6 @@
-sourcedata/
-derivatives/
+jobscripts/
+logs/
+license.txt
+*.sif
+data/
+filterfiles/

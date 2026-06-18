@@ -171,12 +171,7 @@ image_bblsub2_pnc = query_bblsub2(
 )
 
 image_bblsub2_extralong = query_bblsub2(
-    path=Path("/")
-    / "project"
-    / "ExtraLong"
-    / "data"
-    / "datafreeze-2021"
-    / "bids_directory",
+    path=PATH_PROJECT / "sourcedata",
     strategy="full",
 )
 
