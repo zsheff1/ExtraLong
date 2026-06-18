@@ -1,3 +1,0 @@
-Freesurfer's cross-sectional pipeline was run to calculate Euler's number
-to exclude T1w images prior to further processing, and to aid in building priors
-for ANTs' longitudinal pipeline.
