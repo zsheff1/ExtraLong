@@ -1,9 +1,16 @@
 from pathlib import Path
+from shutil import copy2
 
 import flywheel
 import pandas as pd
 
 # Set constants
+PATH_PROJECT = Path("/") / "project" / "ExtraLong"
+PATH_CODE_DATA = PATH_PROJECT / "code" / "data"
+PATH_API = Path("~").expanduser() / "flywheel_api_key.txt"
+PATH_IMGLOOK = PATH_CODE_DATA / "imglook.csv"
+PATH_DXPMR7 = PATH_CODE_DATA / "n9498_diagnosis_dxpmr7_20170509.csv"
+
 PROJECT_LABELS_1 = [
     "22q_Midline_834246",
     "7T_GluCEST_Age_843818",
@@ -17,14 +24,6 @@ PROJECT_LABELS_2 = [
 ]
 PROJECT_LABEL_3 = "SSBC_844685"
 
-PATH_PROJECT = Path("/") / "project" / "ExtraLong"
-PATH_CODE_DATA = PATH_PROJECT / "code" / "data"
-PATH_API = Path("~").expanduser() / "flywheel_api_key.txt"
-PATH_IMGLOOK = PATH_CODE_DATA / "imglook.csv"
-PATH_DXPMR7 = PATH_CODE_DATA / "n9498_diagnosis_dxpmr7_20170509.csv"
-
-LAST_DATAFREEZE = pd.to_datetime("2021-06-30")
-
 EXCLUDED_PROTOCOLS = [
     "842909 - TRANSCENDS_D1",
     "849188 - PRONET",
@@ -33,48 +32,67 @@ EXCLUDED_PROTOCOLS = [
     "855446 - cerebellothalamic_7t",
 ]
 
+LAST_DATAFREEZE = pd.to_datetime("2021-06-30")
+
 
 # Define functions and classes
 def make_path_new(df):
-    return [
-        PATH_PROJECT / f"sub-{bblid:06d}" / f"ses-{scanid:05d}"
-        for bblid, scanid in zip(df["bblid"], df["scanid"])
-    ]
+    return pd.Series(
+        [
+            PATH_PROJECT
+            / f"sub-{bblid:06d}"
+            / f"ses-{scanid:05d}"
+            / "anat"
+            / f"sub-{bblid:06d}_ses-{scanid:05d}_T1w.nii.gz"
+            for bblid, scanid in zip(df["bblid"], df["scanid"])
+        ],
+        index=df.index
+    )
 
-
-class bblsubClass:
-    @classmethod
-    def driver(cls, inputs):
+class LocalSource:
+    def __init__(self, imglook):
+        self.imglook = imglook
+    def find(self, inputs):
         queried = [
-            cls.query(input.get("path"), input.get("glob", "sub-*/ses-*"))
+            self.query(input.get("path"), input.get("glob", "sub-*/ses-*/anat/*_T1w.nii.gz"))
             for input in inputs
         ]
-        filtered = [
-            cls.filter(
-                data, input.get("strategy"), input.get("protocol"), input.get("session")
+        cleaned = [
+            self.clean(
+                data, input.get("strategy"), input.get("protocol"), input.get("session"), self.imglook
             )
             for data, input in zip(queried, inputs)
         ]
-        merged = cls.merge(filtered, [input.get("path") for input in inputs])
+        merged = self.merge(cleaned, [input.get("path") for input in inputs])
         return merged
-
+    @staticmethod
+    def download(images):
+        images.rename(columns={"path": "source_image"}, inplace=True)
+        images["destination_image"] = make_path_new(images)
+        images["source_sidecar"] = images["source_image"].map(lambda p: p.with_suffix("").with_suffix(".json"))
+        images["destination_sidecar"] = images["destination_image"].map(lambda p: p.with_suffix("").with_suffix(".json"))
+        for source_image, destination_image in zip(images["source_image"], images["destination_image"]):
+            destination_image.parent.mkdir(parents=True, exist_ok=True)
+            copy2(source_image, destination_image)
+        for source_sidecar, destination_sidecar in zip(images["source_sidecar"], images["destination_sidecar"]):
+            if source_sidecar.exists():
+                copy2(source_sidecar, destination_sidecar)
     @staticmethod
     def query(path, glob):
         paths = path.glob(glob)
         queried = pd.DataFrame({"path": list(paths)})
         queried["bblid"] = (
             queried["path"]
-            .map(lambda p: p.parent.name)
+            .map(lambda p: p.name)
             .str.extract(r"sub-(\d+)")
             .astype("Int64")
         )
         queried["session"] = (
-            queried["path"].map(lambda p: p.name).str.extract(r"ses-(\w+)")
+            queried["path"].map(lambda p: p.name).str.extract(r"ses-([A-Za-z0-9]+)")
         )
         return queried
-
     @staticmethod
-    def filter(queried, strategy, protocol, session):
+    def clean(queried, strategy, protocol, session, imglook):
         if protocol is None:
             protocol_imglook = imglook.copy()
         else:
@@ -103,7 +121,7 @@ class bblsubClass:
                 {"scanid": "Int64"}
             )
             _on = ["bblid", "scanid"]
-        filtered = (
+        cleaned = (
             pd.merge(
                 queried, protocol_imglook, on=_on, how="inner", validate="one_to_one"
             )
@@ -111,16 +129,15 @@ class bblsubClass:
             .sort_values(["bblid", "scanid"])
             .reset_index(drop=True)
         )
-        return filtered
-
+        return cleaned
     @staticmethod
-    def merge(filtered, paths):
+    def merge(cleaned, paths):
         PATH_EXTRALONG = Path("/") / "project" / "ExtraLong" / "sourcedata"
         standalone = pd.concat(
-            [data for data, path in zip(filtered, paths) if path != PATH_EXTRALONG]
+            [data for data, path in zip(cleaned, paths) if path != PATH_EXTRALONG]
         )
         extralong = next(
-            data for data, path in zip(filtered, paths) if path == PATH_EXTRALONG
+            data for data, path in zip(cleaned, paths) if path == PATH_EXTRALONG
         )
         extralong_only = (
             pd.merge(
@@ -141,16 +158,18 @@ class bblsubClass:
         return merged
 
 
-class FlywheelClass:
-    @classmethod
-    def driver(cls, inputs, fw):
-        queries = [cls.query(fw, labels) for labels, _ in inputs]
+class FlywheelSource:
+    def __init__(self, fw, imglook, images_local):
+        self.fw = fw
+        self.imglook = imglook
+        self.images_local = images_local
+    def find(self, inputs):
+        queries = [self.query(self.fw, labels) for labels, _ in inputs]
         cleaned = [
-            cls.clean(queried, cat) for queried, (_, cat) in zip(queries, inputs)
+            self.clean(queried, cat, self.imglook) for queried, (_, cat) in zip(queries, inputs)
         ]
-        merged = cls.merge_filter(cleaned)
+        merged = self.merge(cleaned, self.imglook)
         return merged
-
     @staticmethod
     def query(fw, project_labels, group="bbl"):
         if isinstance(project_labels, str):
@@ -166,9 +185,8 @@ class FlywheelClass:
             columns=["subject_label", "session_label", "session_id"],
         )
         return queried
-
     @staticmethod
-    def clean(queried, cat):
+    def clean(queried, cat, imglook):
         if cat == 1:
             filtered = queried.loc[
                 queried["subject_label"].str.match(r"^\d+$")
@@ -202,9 +220,8 @@ class FlywheelClass:
             {"bblid": "Int64", "scanid": "Int64"}
         )
         return cleaned
-
     @staticmethod
-    def merge_filter(cleans):
+    def merge(cleans, imglook):
         return (
             pd.concat(cleans)
             .merge(
@@ -213,7 +230,7 @@ class FlywheelClass:
                 how="inner",
             )
             .merge(
-                images_bblsub2[["bblid", "scanid"]].drop_duplicates(),
+                images_local[["bblid", "scanid"]].drop_duplicates(),
                 on=["bblid", "scanid"],
                 how="left",
                 indicator=True,
@@ -253,7 +270,7 @@ imglook = (
 )
 
 # What's available on bblsub2?
-inputs_bblsub2 = [
+inputs_local = [
     {
         "path": Path("/") / "project" / "bbl_gur_evolpsy",
         "strategy": "many_to_one",
@@ -269,7 +286,7 @@ inputs_bblsub2 = [
             "810336 - Go2 Supplement",
             "810336 - Go3",
         ],
-        "glob": "*/bids_directory/sub-*/ses-*",
+        "glob": "*/bids_directory/sub-*/ses-*/anat/*_T1w.nii.gz",
     },
     {
         "path": PATH_PROJECT / "sourcedata",
@@ -277,7 +294,9 @@ inputs_bblsub2 = [
     },
 ]
 
-images_bblsub2 = bblsubClass.driver(inputs_bblsub2)
+local_source = LocalSource(imglook)
+
+images_local = local_source.find(inputs_local)
 
 # What's available on flywheel?
 with open(PATH_API, "r") as file:
@@ -291,11 +310,13 @@ inputs_flywheel = [
     [PROJECT_LABEL_3, 3],
 ]
 
-images_flywheel = FlywheelClass.driver(inputs_flywheel, fw)
+flywheel_source = FlywheelSource(fw, imglook, images_local)
+
+images_flywheel = flywheel_source.find(inputs_flywheel)
 
 # Summarize remaining
 images_found = (
-    pd.concat([images_bblsub2, images_flywheel])
+    pd.concat([images_local, images_flywheel])
     .sort_values(["bblid", "scanid"])
     .reset_index(drop=True)
 )
@@ -312,3 +333,27 @@ remaining = (
 remaining_summary = (
     remaining["protocol"].value_counts().rename_axis("protocol").reset_index(name="n")
 )
+
+# scratch for FlywheelSource.download()
+
+#TODO: [destination for _, _, destination in files] is NOT unique
+#TODO: what to do about projects that aren't BIDS'ified?
+#TODO: this only collects *_T1w.nii.gz, not *_T1w.json
+
+files = []
+for session_id, destination in zip(images_flywheel["session_id"], make_path_new(images_flywheel)):
+    session = fw.get_session(session_id)
+    for acquisition in session.acquisitions():
+        for file in acquisition.files:
+            if "BIDS" not in file.info:
+                continue
+            if "Filename" not in file.info["BIDS"]:
+                continue
+            if "T1w.nii.gz" not in file.info["BIDS"]["Filename"]:
+                continue
+            files.append((acquisition.id, file.name, str(destination)))
+
+for acquisition_id, file_name, destination in files:
+    acquisition = fw.get_acquisition(acquisition_id)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    acquisition.download_file(file_name, destination)
