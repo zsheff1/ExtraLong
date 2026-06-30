@@ -26,7 +26,7 @@ while read -r sub_ses; do
 
 	module load apptainer
 
-	apptainer exec --cleanenv \\
+	apptainer exec --containall \\
 	    --bind "${DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --env FS_LICENSE=/license.txt \\
@@ -35,10 +35,11 @@ while read -r sub_ses; do
 	    "${CONTAINER}" \\
 	    bash -c '
 	    for hemi in lh rh; do
+	        [[ -f /data_dir/${sub_ses}/surf/\${hemi}.pial_lgi ]] || continue
 	        mri_segstats \\
 	        --annot ${sub_ses} \${hemi} aparc \\
-	        --i \${hemi}.pial_lgi \\
-	        --sum \${hemi}.aparc.pial_lgi.stats
+	        --i /data_dir/${sub_ses}/surf/\${hemi}.pial_lgi \\
+	        --sum /data_dir/${sub_ses}/stats/\${hemi}.aparc.pial_lgi.stats
 	    done
 	    '
 	EOF

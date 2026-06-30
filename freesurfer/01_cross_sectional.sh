@@ -34,15 +34,15 @@ while read -r image; do
 
 	module load apptainer
 
-	apptainer exec \\
-	    --bind "${image}:/input.nii.gz" \\
+	apptainer exec --containall \\
+	    --bind "${image}:/input.nii.gz:ro" \\
 	    --bind "${OUTPUT_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
+	    --pwd /scratch \\
 	    --env FS_LICENSE=/license.txt \\
-	    --env SURFER_FRONTDOOR=1 \\
-	    --env OMP_NUM_THREADS=${NTHREADS} \\
 	    --env SUBJECTS_DIR=/data_dir \\
+	    --env OMP_NUM_THREADS=${NTHREADS} \\
 	    "${CONTAINER}" \\
 	    recon-all \\
 	    -i /input.nii.gz \\

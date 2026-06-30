@@ -18,7 +18,7 @@ cat <<-EOF > "${jobscript_path}"
 
 module load apptainer
 
-apptainer exec \\
+apptainer exec --containall \\
     --bind "${DATA_DIR}:/data_dir" \\
     --bind "${LICENSE}:/license.txt" \\
     "${CONTAINER}" \\

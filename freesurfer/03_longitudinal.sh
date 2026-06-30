@@ -27,15 +27,19 @@ while read -r sub; do
 		#BSUB -o ${LOG_DIR}/${sub}_${ses}.o
 		#BSUB -e ${LOG_DIR}/${sub}_${ses}.e
 
+		mkdir -p /scratch/\$USER/\$LSB_JOBID
+		trap 'echo "Cleaning /scratch/\$USER/\$LSB_JOBID"; rm -rf /scratch/\$USER/\$LSB_JOBID' EXIT
+
 		module load apptainer
 
-		apptainer exec \\
+		apptainer exec --containall \\
 		    --bind "${DATA_DIR}:/data_dir" \\
 		    --bind "${LICENSE}:/license.txt" \\
+		    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
+		    --pwd /scratch \\
 		    --env FS_LICENSE=/license.txt \\
-		    --env SURFER_FRONTDOOR=1 \\
-		    --env OMP_NUM_THREADS=${NTHREADS} \\
 		    --env SUBJECTS_DIR=/data_dir \\
+		    --env OMP_NUM_THREADS=${NTHREADS} \\
 		    "${CONTAINER}" \\
 		    recon-all \\
 		    -long "${sub}_${ses}" "${sub}" \\

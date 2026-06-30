@@ -11,7 +11,7 @@ mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}"
 
 while read -r sub_ses; do
 
-    [[ "${sub_ses}" =~ (sub-[0-9]{6})_(ses-[0-9]{5}).* ]]
+    [[ "${sub_ses}" =~ (sub-[0-9]{6})_(ses-[0-9]{5}) ]]
 
     sub="${BASH_REMATCH[1]}"
     ses="${BASH_REMATCH[2]}"
@@ -36,14 +36,14 @@ while read -r sub_ses; do
 
 	module load apptainer
 
-	apptainer exec --cleanenv \\
+	apptainer exec --containall \\
 	    --bind "${DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/commapp/matlab2019b:/commapp/matlab2019b" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
+	    --pwd /scratch \\
 	    --env FS_LICENSE=/license.txt \\
 	    --env SUBJECTS_DIR=/data_dir \\
-	    --env SURFER_FRONTDOOR=1 \\
 	    --env MATLAB=/commapp/matlab2019b/bin/matlab \\
 	    --env MATLAB_PREFDIR=/scratch/matlab_prefs \\
 	    --env PREPEND_PATH=/commapp/matlab2019b/bin \\

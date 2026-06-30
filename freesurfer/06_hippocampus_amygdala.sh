@@ -6,6 +6,7 @@ LOG_DIR="/project/ExtraLong/code/logs/freesurfer/06_hippocampus_amygdala"
 CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
 LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
 SUBJECTSFILE="${DATA_DIR}/subjectsfile.txt"
+NTHREADS=4
 
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}"
 
@@ -13,7 +14,7 @@ declare -A seen
 
 while read -r sub_ses; do
 
-    [[ "${sub_ses}" =~ (sub-[0-9]{6})_(ses-[0-9]{5}).* ]]
+    [[ "${sub_ses}" =~ (sub-[0-9]{6})_(ses-[0-9]{5}) ]]
 
     sub="${BASH_REMATCH[1]}"
     ses="${BASH_REMATCH[2]}"
@@ -21,12 +22,12 @@ while read -r sub_ses; do
     if [[ "${sub_ses}" =~ ^sub-[0-9]{6}_ses-[0-9]{5}\.long\.sub-[0-9]{6}$ ]]; then
         if [[ -z "${seen[$sub]}" ]]; then
             seen[$sub]=1
-            call="segmentHA_T1_long.sh ${sub}"
+            timepoint="--long-base ${sub}"
         else
             continue
         fi
     else
-        call="segmentHA_T1.sh ${sub_ses}"
+        timepoint="--cross ${sub_ses}"
     fi
 
     jobscript_path="${JOBSCRIPT_DIR}/${sub}.sh"
@@ -34,7 +35,8 @@ while read -r sub_ses; do
     cat <<-EOF > "${jobscript_path}"
 	#!/usr/bin/env bash
 	#BSUB -J 06_hippocampus_amygdala_${sub}
-	#BSUB -m galton
+	#BSUB -n ${NTHREADS}
+	#BSUB -R "span[hosts=1]"
 	#BSUB -o ${LOG_DIR}/${sub}.o
 	#BSUB -e ${LOG_DIR}/${sub}.e
 
@@ -43,19 +45,17 @@ while read -r sub_ses; do
 
 	module load apptainer
 
-	apptainer exec --cleanenv \\
+	apptainer exec --containall \\
 	    --bind "${DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/commapp/matlab2019b:/commapp/matlab2019b" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
+	    --pwd /scratch \\
 	    --env FS_LICENSE=/license.txt \\
 	    --env SUBJECTS_DIR=/data_dir \\
-	    --env SURFER_FRONTDOOR=1 \\
-	    --env MATLAB=/commapp/matlab2019b/bin/matlab \\
-	    --env MATLAB_PREFDIR=/scratch/matlab_prefs \\
-	    --env PREPEND_PATH=/commapp/matlab2019b/bin \\
+	    --env OMP_NUM_THREADS=${NTHREADS} \\
 	    "${CONTAINER}" \\
-	    ${call}
+	    segment_subregions hippo-amygdala ${timepoint} --threads ${NTHREADS}
 
 	EOF
 

@@ -16,7 +16,7 @@ for sub in $(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'sub-*_ses
     timepoints=""
     for ses_dir in "${DATA_DIR}/${sub}"_ses-*; do
         sub_ses=$(basename "$ses_dir")
-        [[ "${sub_ses}" ~= ^sub-[0-9]{6}_ses-[0-9]{5}$ ]] || continue
+        [[ "${sub_ses}" =~ ^sub-[0-9]{6}_ses-[0-9]{5}$ ]] || continue
         timepoints+="-tp ${sub_ses} "
     done
 
@@ -30,15 +30,19 @@ for sub in $(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'sub-*_ses
 	#BSUB -o ${LOG_DIR}/${sub}.o
 	#BSUB -e ${LOG_DIR}/${sub}.e
 
+	mkdir -p /scratch/\$USER/\$LSB_JOBID
+	trap 'echo "Cleaning /scratch/\$USER/\$LSB_JOBID"; rm -rf /scratch/\$USER/\$LSB_JOBID' EXIT
+
 	module load apptainer
 
-	apptainer exec \\
+	apptainer exec --containall \\
 	    --bind "${DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
+	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
+	    --pwd /scratch \\
 	    --env FS_LICENSE=/license.txt \\
-	    --env SURFER_FRONTDOOR=1 \\
-	    --env OMP_NUM_THREADS=${NTHREADS} \\
 	    --env SUBJECTS_DIR=/data_dir \\
+	    --env OMP_NUM_THREADS=${NTHREADS} \\
 	    "${CONTAINER}" \\
 	    recon-all \\
 	    -base ${sub} \\

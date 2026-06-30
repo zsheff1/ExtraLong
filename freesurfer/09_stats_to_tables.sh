@@ -5,6 +5,7 @@ JOBSCRIPT_DIR="/project/ExtraLong/code/jobscripts/freesurfer"
 LOG_DIR="/project/ExtraLong/code/logs/freesurfer"
 CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
 LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
+TABULATE_SUBREGIONS="/project/ExtraLong/code/anat/freesurfer_8.2.0_evolpsy/tabulate_subregions.py"
 
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}" "${DATA_DIR}/tables"
 
@@ -18,12 +19,12 @@ cat <<-EOF > "${jobscript_path}"
 
 module load apptainer
 
-apptainer exec --cleanenv \\
+apptainer exec --containall \\
     --bind "${DATA_DIR}:/data_dir" \\
     --bind "${LICENSE}:/license.txt:ro" \\
+    --bind "${TABULATE_SUBREGIONS}:/tabulate_subregions.py" \\
     "${CONTAINER}" \\
     bash -c '
-        export SURFER_FRONTDOOR=1
         export FS_LICENSE=/license.txt
         export SUBJECTS_DIR=/data_dir
 
@@ -52,11 +53,11 @@ apptainer exec --cleanenv \\
             -m volume --stats wmparc.stats --all-segs \\
             -t /data_dir/tables/wmparc_volume.tsv
 
-        ConcatenateSubregionsResults.sh \\
-            -f amygdalar-nuclei.lh.T1.v21.stats \\
-            -f amygdalar-nuclei.rh.T1.v21.stats \\
-            -f hipposubfields.lh.T1.v21.stats \\
-            -f hipposubfields.rh.T1.v21.stats \\
+        python3 /tabulate_subregions.py \\
+            -f lh.amygNucVolumes.txt \\
+            -f lh.hippoSfVolumes.txt \\
+            -f rh.amygNucVolumes.txt \\
+            -f rh.hippoSfVolumes.txt \\
             -o /data_dir/tables/
     '
 EOF
