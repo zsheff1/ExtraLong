@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
-INPUT_DIR="/project/ExtraLong"
-OUTPUT_DIR="/project/ExtraLong/derivatives/freesurfer"
-JOBSCRIPT_DIR="/project/ExtraLong/code/jobscripts/freesurfer/01_cross_sectional"
-LOG_DIR="/project/ExtraLong/code/logs/freesurfer/01_cross_sectional"
-CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
-LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
-NTHREADS=4
+set -euo pipefail
 
-mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}" "${OUTPUT_DIR}"
+config=${1:?Usage: $0 CONFIG}
+source "$config"
+
+script_name=$(basename "${BASH_SOURCE[0]}")
+script_stem="${script_name%.sh}"
+
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${DATA_DIR}"
 
 # Find all T1w images
-find "${INPUT_DIR}" -mindepth 4 -maxdepth 4 -type f -path "*/sub-*/ses-*/anat/*T1w.nii.gz" |
+find "${PROJECT_DIR}" -mindepth 4 -maxdepth 4 -type f -path "*/sub-*/ses-*/anat/*T1w.nii.gz" |
 while read -r image; do
 
     [[ "${image}" =~ (sub-[0-9]{6})_(ses-[0-9]{5}) ]] || continue
@@ -19,15 +19,15 @@ while read -r image; do
     sub="${BASH_REMATCH[1]}"
     ses="${BASH_REMATCH[2]}"
 
-    jobscript_path="${JOBSCRIPT_DIR}/${sub}_${ses}.sh"
+    jobscript_path="${JOBSCRIPT_DIR}/${script_stem}/${sub}_${ses}.sh"
 
     cat <<-EOF > "${jobscript_path}"
 	#!/usr/bin/env bash
-	#BSUB -J 01_cross_sectional_${sub}_${ses}
+	#BSUB -J ${script_stem}_${sub}_${ses}
 	#BSUB -n ${NTHREADS}
 	#BSUB -R "span[hosts=1]"
-	#BSUB -o ${LOG_DIR}/${sub}_${ses}.o
-	#BSUB -e ${LOG_DIR}/${sub}_${ses}.e
+	#BSUB -o ${LOG_DIR}/${script_stem}/${sub}_${ses}.o
+	#BSUB -e ${LOG_DIR}/${script_stem}/${sub}_${ses}.e
 
 	mkdir -p /scratch/\$USER/\$LSB_JOBID
 	trap 'echo "Cleaning /scratch/\$USER/\$LSB_JOBID"; rm -rf /scratch/\$USER/\$LSB_JOBID' EXIT
@@ -36,7 +36,7 @@ while read -r image; do
 
 	apptainer exec --containall \\
 	    --bind "${image}:/input.nii.gz:ro" \\
-	    --bind "${OUTPUT_DIR}:/data_dir" \\
+	    --bind "${DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
 	    --pwd /scratch \\

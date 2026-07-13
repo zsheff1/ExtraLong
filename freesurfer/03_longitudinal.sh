@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
-DATA_DIR="/project/ExtraLong/derivatives/freesurfer"
-JOBSCRIPT_DIR="/project/ExtraLong/code/jobscripts/freesurfer/03_longitudinal"
-LOG_DIR="/project/ExtraLong/code/logs/freesurfer/03_longitudinal"
-CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
-LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
-NTHREADS=4
+set -euo pipefail
 
-mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}"
+config=${1:?Usage: $0 CONFIG}
+source "$config"
+
+script_name=$(basename "${BASH_SOURCE[0]}")
+script_stem="${script_name%.sh}"
+
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
 
 find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" ! -name "sub-*_ses-*" -printf '%f\n' |
 while read -r sub; do
@@ -17,15 +18,15 @@ while read -r sub; do
 
         ses="${sub_ses#${sub}_}"
 
-        jobscript_path="${JOBSCRIPT_DIR}/${sub}_${ses}.sh"
+        jobscript_path="${JOBSCRIPT_DIR}/${script_stem}/${sub}_${ses}.sh"
 
         cat <<-EOF > "${jobscript_path}"
 		#!/usr/bin/env bash
-		#BSUB -J 03_longitudinal_${sub}_${ses}
+		#BSUB -J ${script_stem}_${sub}_${ses}
 		#BSUB -n ${NTHREADS}
 		#BSUB -R "span[hosts=1]"
-		#BSUB -o ${LOG_DIR}/${sub}_${ses}.o
-		#BSUB -e ${LOG_DIR}/${sub}_${ses}.e
+		#BSUB -o ${LOG_DIR}/${script_stem}/${sub}_${ses}.o
+		#BSUB -e ${LOG_DIR}/${script_stem}/${sub}_${ses}.e
 
 		mkdir -p /scratch/\$USER/\$LSB_JOBID
 		trap 'echo "Cleaning /scratch/\$USER/\$LSB_JOBID"; rm -rf /scratch/\$USER/\$LSB_JOBID' EXIT

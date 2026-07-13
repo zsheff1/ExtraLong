@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 
-DATA_DIR="/project/ExtraLong/derivatives/freesurfer"
-JOBSCRIPT_DIR="/project/ExtraLong/code/jobscripts/freesurfer"
-LOG_DIR="/project/ExtraLong/code/logs/freesurfer"
-CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
-LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
-TABULATE_SUBREGIONS="/project/ExtraLong/code/anat/freesurfer_8.2.0_evolpsy/tabulate_subregions.py"
+set -euo pipefail
 
-mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}" "${DATA_DIR}/tables"
+config=${1:?Usage: $0 CONFIG}
+source "$config"
 
-jobscript_path="${JOBSCRIPT_DIR}/09_stats_to_tables.sh"
+script_name=$(basename "${BASH_SOURCE[0]}")
+script_stem="${script_name%.sh}"
+
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${DATA_DIR}/tables"
+
+jobscript_path="${JOBSCRIPT_DIR}/${script_stem}.sh"
 
 cat <<-EOF > "${jobscript_path}"
 #!/usr/bin/env bash
-#BSUB -o ${LOG_DIR}/09_stats_to_tables.o
-#BSUB -e ${LOG_DIR}/09_stats_to_tables.e
-#BSUB -J 09_stats_to_tables
+#BSUB -J ${script_stem}
+#BSUB -o ${LOG_DIR}/${script_stem}.o
+#BSUB -e ${LOG_DIR}/${script_stem}.e
 
 module load apptainer
 
