@@ -31,7 +31,7 @@ EXCLUDED_PROTOCOLS = [
 LAST_DATAFREEZE = pd.to_datetime("2021-06-30")
 
 # Read inputs and API key
-with open(PATH_CONFIG, 'r') as f:
+with open(PATH_CONFIG, "r") as f:
     config = json.load(f)
 
 with open(PATH_API, "r") as file:
@@ -39,8 +39,7 @@ with open(PATH_API, "r") as file:
 
 # Format paths
 config["inputs_local"] = [
-    {**d, "path": Path(d["path"])}
-    for d in config["inputs_local"]
+    {**d, "path": Path(d["path"])} for d in config["inputs_local"]
 ]
 
 # instantiate flywheel client
@@ -79,10 +78,6 @@ files_local = local_source.find(config["inputs_local"])
 flywheel_source = FlywheelSource(fw, imglook, files_local, PATH_PROJECT)
 files_flywheel = flywheel_source.find(config["inputs_flywheel"])
 
-# Download scans
-LocalSource.download(files_local.sample(n=20, random_state=42))
-FlywheelSource.download(fw, files_flywheel[["acquisition_id", "file_name", "destination"]].sample(n=20, random_state=42))
-
 # Summarize remaining
 files_found = (
     pd.concat([files_local, files_flywheel])
@@ -102,3 +97,55 @@ remaining = (
 remaining_summary = (
     remaining["protocol"].value_counts().rename_axis("protocol").reset_index(name="n")
 )
+
+# Download scans
+if remaining.shape[0] == 0: # if all files were found, download the dataset
+    LocalSource.download(files_local)
+    FlywheelSource.download(fw, files_flywheel[["acquisition_id", "file_name", "destination"]])
+elif remaining.shape[0]: # if not all files were found, download a sample dataset
+    LocalSource.download(files_local.sample(n=20, random_state=42))
+    FlywheelSource.download(
+        fw,
+        files_flywheel[["acquisition_id", "file_name", "destination"]].sample(
+            n=20, random_state=42
+        ),
+    )
+
+## SCRATCH
+remaining_helpers = [
+    {
+        "imglook": "856432 - MIND",
+        "flywheel": "MIND_856432",
+        "scratch": "856432",
+    },
+    {
+        "imglook": "844685 - PBN",
+        "flywheel": "SSBC_844685",
+        "scratch": "844685",
+    },
+    {
+        "imglook": "855714 - RSVP",
+        "flywheel": "RSVP_855714",
+        "scratch": "855714",
+    },
+]
+
+remaining_mind = (
+    remaining
+    .loc[remaining["protocol"].eq("856432 - MIND"), :]
+    .reset_index(drop=True)
+    .assign(
+        session_id=lambda df: df.apply(
+            lambda row: fw.lookup(f"bbl/MIND_856432/{row["bblid"]}_{row["scanid"]}").id,
+            axis=1
+        )
+    )
+)
+
+for bblid, scanid, session_id in remaining_mind.loc[:, ["bblid", "scanid", "session_id"]].itertuples(index=False, name=None):
+    session = fw.get(session_id)
+    destination = PATH_PROJECT / "scratch" / f"{bblid}_{scanid}.zip"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fw.download_zip(session, str(destination))
+
+
