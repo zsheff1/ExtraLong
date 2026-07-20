@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-DATA_DIR="/project/ExtraLong/derivatives/freesurfer"
-SUBJECTSFILE="${DATA_DIR}/subjectsfile.txt"
+set -euo pipefail
+
+config=${1:?Usage: $0 CONFIG}
+source "$config"
 
 find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*_ses-*" -printf '%f\n' |
 while read -r sub_ses; do

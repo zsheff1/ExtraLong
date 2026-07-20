@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
-DATA_DIR="/project/ExtraLong/derivatives/freesurfer"
-JOBSCRIPT_DIR="/project/ExtraLong/code/jobscripts/freesurfer/08_segs_to_stats"
-LOG_DIR="/project/ExtraLong/code/logs/freesurfer/08_segs_to_stats"
-CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
-LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
-SUBJECTSFILE="${DATA_DIR}/subjectsfile.txt"
+set -euo pipefail
 
-mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}"
+config=${1:?Usage: $0 CONFIG}
+source "$config"
+
+script_name=$(basename "${BASH_SOURCE[0]}")
+script_stem="${script_name%.sh}"
+
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
 
 while read -r sub_ses; do
 
@@ -16,13 +17,13 @@ while read -r sub_ses; do
     sub="${BASH_REMATCH[1]}"
     ses="${BASH_REMATCH[2]}"
 
-    jobscript_path="${JOBSCRIPT_DIR}/${sub}_${ses}.sh"
+    jobscript_path="${JOBSCRIPT_DIR}/${script_stem}/${sub}_${ses}.sh"
 
     cat <<-EOF > "${jobscript_path}"
 	#!/usr/bin/env bash
-	#BSUB -J segs_to_stats_${sub}_${ses}
-	#BSUB -o ${LOG_DIR}/${sub}_${ses}.o
-	#BSUB -e ${LOG_DIR}/${sub}_${ses}.e
+	#BSUB -J ${script_stem}_${sub}_${ses}
+	#BSUB -o ${LOG_DIR}/${script_stem}/${sub}_${ses}.o
+	#BSUB -e ${LOG_DIR}/${script_stem}/${sub}_${ses}.e
 
 	module load apptainer
 

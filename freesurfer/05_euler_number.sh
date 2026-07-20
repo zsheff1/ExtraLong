@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 
-DATA_DIR="/project/ExtraLong/derivatives/freesurfer"
-JOBSCRIPT_DIR="/project/ExtraLong/code/jobscripts/freesurfer"
-LOG_DIR="/project/ExtraLong/code/logs/freesurfer"
-CONTAINER="/appl/containers/freesurfer_8.2.0.sif"
-LICENSE="/project/ExtraLong/code/freesurfer/license.txt"
+set -euo pipefail
+
+config=${1:?Usage: $0 CONFIG}
+source "$config"
+
+script_name=$(basename "${BASH_SOURCE[0]}")
+script_stem="${script_name%.sh}"
 
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}" "${DATA_DIR}/tables"
 
-jobscript_path="${JOBSCRIPT_DIR}/05_euler_number.sh"
+jobscript_path="${JOBSCRIPT_DIR}/${script_stem}.sh"
 
 cat <<-EOF > "${jobscript_path}"
 #!/usr/bin/env bash
-#BSUB -J 05_euler_number
-#BSUB -o ${LOG_DIR}/05_euler_number.o
-#BSUB -e ${LOG_DIR}/05_euler_number.e
+#BSUB -J ${script_stem}
+#BSUB -o ${LOG_DIR}/${script_stem}.o
+#BSUB -e ${LOG_DIR}/${script_stem}.e
 
 module load apptainer
 
