@@ -160,7 +160,7 @@ class FlywheelSource:
     def __init__(self, fw, imglook, images_local, root):
         self.fw = fw
         self.imglook = imglook
-        self.images_local = (images_local,)
+        self.images_local = images_local
         self.root = root
 
     def find(self, inputs):
