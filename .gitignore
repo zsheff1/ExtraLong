@@ -3,3 +3,4 @@ logs/
 license.txt
 *.sif
 data/
+__pycache__
