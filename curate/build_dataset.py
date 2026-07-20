@@ -4,6 +4,8 @@ from shutil import copy2
 import flywheel
 import pandas as pd
 
+# TODO: what to do about projects that aren't BIDS'ified? PBN flywheel, MIND local
+
 # Set constants
 PATH_PROJECT = Path("/") / "project" / "ExtraLong"
 PATH_CODE_DATA = PATH_PROJECT / "code" / "data"
@@ -13,9 +15,7 @@ PATH_DXPMR7 = PATH_CODE_DATA / "n9498_diagnosis_dxpmr7_20170509.csv"
 
 PROJECT_LABELS_1 = [
     "22q_Midline_834246",
-    "7T_GluCEST_Age_843818",
     "EFR01",
-    "LongGluCEST_843329",
     "MOTIVE",
 ]
 PROJECT_LABELS_2 = [
@@ -26,6 +26,8 @@ PROJECT_LABEL_3 = "SSBC_844685"
 
 EXCLUDED_PROTOCOLS = [
     "842909 - TRANSCENDS_D1",
+    "843329 - LongGluCEST",
+    "843818 - 7t_glucest_age",
     "849188 - PRONET",
     "854294 - hyperfine_pilot",
     "855194 - SFARI_Penn",
@@ -46,7 +48,7 @@ def make_path_new(df):
             / f"sub-{bblid:06d}_ses-{scanid:05d}_T1w.nii.gz"
             for bblid, scanid in zip(df["bblid"], df["scanid"])
         ],
-        index=df.index
+        index=df.index,
     )
 
 class LocalSource:
@@ -54,29 +56,29 @@ class LocalSource:
         self.imglook = imglook
     def find(self, inputs):
         queried = [
-            self.query(input.get("path"), input.get("glob", "sub-*/ses-*/anat/*_T1w.nii.gz"))
+            self.query(
+                input.get("path"), input.get("glob", "sub-*/ses-*/anat/*_T1w.nii.gz")
+            )
             for input in inputs
         ]
         cleaned = [
             self.clean(
-                data, input.get("strategy"), input.get("protocol"), input.get("session"), self.imglook
+                data,
+                input.get("strategy"),
+                input.get("protocol"),
+                input.get("session"),
+                self.imglook,
             )
             for data, input in zip(queried, inputs)
         ]
         merged = self.merge(cleaned, [input.get("path") for input in inputs])
-        return merged
+        files = self.sessions_to_files(merged)
+        return files
     @staticmethod
-    def download(images):
-        images.rename(columns={"path": "source_image"}, inplace=True)
-        images["destination_image"] = make_path_new(images)
-        images["source_sidecar"] = images["source_image"].map(lambda p: p.with_suffix("").with_suffix(".json"))
-        images["destination_sidecar"] = images["destination_image"].map(lambda p: p.with_suffix("").with_suffix(".json"))
-        for source_image, destination_image in zip(images["source_image"], images["destination_image"]):
-            destination_image.parent.mkdir(parents=True, exist_ok=True)
-            copy2(source_image, destination_image)
-        for source_sidecar, destination_sidecar in zip(images["source_sidecar"], images["destination_sidecar"]):
-            if source_sidecar.exists():
-                copy2(source_sidecar, destination_sidecar)
+    def download(files):
+        for source, destination in zip(files["source"], files["destination"]):
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            copy2(source, destination)
     @staticmethod
     def query(path, glob):
         paths = path.glob(glob)
@@ -156,6 +158,29 @@ class LocalSource:
             .reset_index(drop=True)
         )
         return merged
+    @staticmethod
+    def sessions_to_files(sessions):
+        files_nii = (
+            sessions
+            .copy()
+            .rename(columns={"path": "source"})
+            .assign(destination=lambda df: make_path_new(df))
+        )
+        files_json = (
+            files_nii
+            .copy()
+            .assign(
+                source = lambda df: df["source"].map(lambda p: p.with_suffix("").with_suffix(".json")),
+                destination = lambda df: df["destination"].map(lambda p: p.with_suffix("").with_suffix(".json"))
+            )
+        )
+        files = (
+            pd.concat([files_nii, files_json], axis=0)
+            .loc[lambda df: df["source"].map(Path.exists), :]
+            .sort_values(["bblid", "scanid", "destination"])
+            .reset_index(drop=True)
+        )
+        return files
 
 
 class FlywheelSource:
@@ -166,10 +191,22 @@ class FlywheelSource:
     def find(self, inputs):
         queries = [self.query(self.fw, labels) for labels, _ in inputs]
         cleaned = [
-            self.clean(queried, cat, self.imglook) for queried, (_, cat) in zip(queries, inputs)
+            self.clean(queried, cat, self.imglook)
+            for queried, (_, cat) in zip(queries, inputs)
         ]
-        merged = self.merge(cleaned, self.imglook)
-        return merged
+        merged = self.merge(cleaned, self.imglook, self.images_local)
+        files = self.session_to_file(self.fw, merged)
+        deduplicated = self.deduplicate(files)
+        nii_json = self.add_json(self.fw, deduplicated)
+        return nii_json
+    @staticmethod
+    def download(fw, files):
+        for acquisition_id, file_name, destination in files.itertuples(
+            index=False, name=None
+        ):
+            acquisition = fw.get_acquisition(acquisition_id)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            acquisition.download_file(file_name, destination)
     @staticmethod
     def query(fw, project_labels, group="bbl"):
         if isinstance(project_labels, str):
@@ -221,7 +258,7 @@ class FlywheelSource:
         )
         return cleaned
     @staticmethod
-    def merge(cleans, imglook):
+    def merge(cleans, imglook, images_local):
         return (
             pd.concat(cleans)
             .merge(
@@ -242,6 +279,77 @@ class FlywheelSource:
             .sort_values(["bblid", "scanid"])
             .reset_index(drop=True)
         )
+    @staticmethod
+    def session_to_file(fw, sessions):
+        rows = []
+        for bblid, scanid, session_id, destination in zip(
+            sessions["bblid"], sessions["scanid"], sessions["session_id"], make_path_new(sessions)
+        ):
+            session = fw.get_session(session_id)
+            for acquisition in session.acquisitions():
+                for file in acquisition.files:
+                    if "BIDS" not in file.info:
+                        continue
+                    if "Filename" not in file.info["BIDS"]:
+                        continue
+                    if "T1w.nii.gz" not in file.info["BIDS"]["Filename"]:
+                        continue
+                    rows.append((bblid, scanid, acquisition.id, file.name, destination))
+        files = pd.DataFrame(rows, columns=["bblid", "scanid", "acquisition_id", "file_name", "destination"])
+        return (files)
+    @staticmethod
+    def deduplicate(files_duplicated):
+        files_single = files_duplicated.groupby("destination").filter(lambda g: len(g) == 1)
+        files_multi = files_duplicated.groupby("destination").filter(lambda g: len(g) > 1)
+        files_multi["acquisition_time"] = files_multi.apply(
+            lambda row: next(
+                file.info["AcquisitionTime"]
+                for file in fw.get(row["acquisition_id"]).files
+                if file.name == row["file_name"]
+            ),
+            axis=1,
+        )
+        files_multi = files_multi.loc[files_multi.groupby("destination")["acquisition_time"].idxmax(), :].drop(
+            columns=["acquisition_time"]
+        )
+        files_deduplicated = (
+            pd.concat([files_single, files_multi], axis=0).sort_values("destination").reset_index(drop=True)
+        )
+        return files_deduplicated
+    @classmethod
+    def add_json(cls, fw, files):
+        files["json_file"] = files.apply(
+            lambda row: cls.find_json_sidecar(
+                fw,
+                row["acquisition_id"],
+                row["file_name"],
+            ),
+            axis=1,
+        )
+        files_nii = files[["bblid", "scanid", "acquisition_id", "file_name", "destination"]]
+        files_json = (
+            files[["bblid", "scanid", "acquisition_id", "json_file", "destination"]]
+            .rename(columns={"json_file": "file_name"})
+            .loc[lambda df: df["file_name"].notna()]
+        )
+        files_json["destination"] = files_json["destination"].map(
+            lambda p: Path(p).with_suffix("").with_suffix(".json")
+        )
+        files = (
+            pd.concat([files_nii, files_json], axis=0)
+            .sort_values("destination")
+            .reset_index(drop=True)
+        )
+        return files
+    @staticmethod
+    def find_json_sidecar(fw, acquisition_id, nii_name):
+            acq = fw.get(acquisition_id)
+            json_name = str(Path(nii_name).with_suffix("").with_suffix(".json"))
+            match = next(
+                (f.name for f in acq.files if f.name == json_name),
+                None,
+            )
+            return match
 
 
 # What's expected from imglook?
@@ -296,7 +404,9 @@ inputs_local = [
 
 local_source = LocalSource(imglook)
 
-images_local = local_source.find(inputs_local)
+files_local = local_source.find(inputs_local)
+
+LocalSource.download(files_local.sample(n=20, random_state=42))
 
 # What's available on flywheel?
 with open(PATH_API, "r") as file:
@@ -310,19 +420,21 @@ inputs_flywheel = [
     [PROJECT_LABEL_3, 3],
 ]
 
-flywheel_source = FlywheelSource(fw, imglook, images_local)
+flywheel_source = FlywheelSource(fw, imglook, files_local)
 
-images_flywheel = flywheel_source.find(inputs_flywheel)
+files_flywheel = flywheel_source.find(inputs_flywheel)
+
+FlywheelSource.download(fw, files_flywheel.sample(n=20, random_state=42))
 
 # Summarize remaining
-images_found = (
-    pd.concat([images_local, images_flywheel])
+files_found = (
+    pd.concat([files_local, files_flywheel])
     .sort_values(["bblid", "scanid"])
     .reset_index(drop=True)
 )
 
 remaining = (
-    pd.merge(imglook, images_found, on=["bblid", "scanid"], how="left", indicator=True)
+    pd.merge(imglook, files_found, on=["bblid", "scanid"], how="left", indicator=True)
     .loc[
         lambda df: (df["_merge"].eq("left_only") & df["doscan"].gt(LAST_DATAFREEZE)),
         ["bblid", "scanid", "protocol", "sourceid", "doscan"],
@@ -333,27 +445,3 @@ remaining = (
 remaining_summary = (
     remaining["protocol"].value_counts().rename_axis("protocol").reset_index(name="n")
 )
-
-# scratch for FlywheelSource.download()
-
-#TODO: [destination for _, _, destination in files] is NOT unique
-#TODO: what to do about projects that aren't BIDS'ified?
-#TODO: this only collects *_T1w.nii.gz, not *_T1w.json
-
-files = []
-for session_id, destination in zip(images_flywheel["session_id"], make_path_new(images_flywheel)):
-    session = fw.get_session(session_id)
-    for acquisition in session.acquisitions():
-        for file in acquisition.files:
-            if "BIDS" not in file.info:
-                continue
-            if "Filename" not in file.info["BIDS"]:
-                continue
-            if "T1w.nii.gz" not in file.info["BIDS"]["Filename"]:
-                continue
-            files.append((acquisition.id, file.name, str(destination)))
-
-for acquisition_id, file_name, destination in files:
-    acquisition = fw.get_acquisition(acquisition_id)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    acquisition.download_file(file_name, destination)
