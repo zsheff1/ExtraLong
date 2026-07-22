@@ -2,13 +2,15 @@
 
 import json
 from pathlib import Path
+from zipfile import ZipFile
+import shutil
 
 import flywheel
 import pandas as pd
 
 from curate.sources import LocalSource, FlywheelSource
 
-# TODO: what to do about projects that aren't BIDS'ified? PBN flywheel, MIND local
+# TODO: BIDS heuristic: PBN, MIND, 22q_Midline, RSVP
 
 # Set constants
 PATH_PROJECT = Path("/") / "project" / "ExtraLong"
@@ -112,40 +114,79 @@ elif remaining.shape[0]: # if not all files were found, download a sample datase
     )
 
 ## SCRATCH
-remaining_helpers = [
+remaining_configs = [
     {
-        "imglook": "856432 - MIND",
-        "flywheel": "MIND_856432",
-        "scratch": "856432",
+        "protocol": "856432 - MIND",
+        "project_label": "MIND_856432",
     },
     {
-        "imglook": "844685 - PBN",
-        "flywheel": "SSBC_844685",
-        "scratch": "844685",
+        "protocol": "844685 - PBN",
+        "project_label": "SSBC_844685",
     },
     {
-        "imglook": "855714 - RSVP",
-        "flywheel": "RSVP_855714",
-        "scratch": "855714",
+        "protocol": "855714 - RSVP",
+        "project_label": "RSVP_855714",
+    },
+    {
+        "protocol": "834246 - 22qmidline",
+        "project_label": "22q_Midline_834246",
     },
 ]
 
-remaining_mind = (
-    remaining
-    .loc[remaining["protocol"].eq("856432 - MIND"), :]
-    .reset_index(drop=True)
-    .assign(
-        session_id=lambda df: df.apply(
-            lambda row: fw.lookup(f"bbl/MIND_856432/{row["bblid"]}_{row["scanid"]}").id,
-            axis=1
+def download_non_bids(
+    remaining: pd.DataFrame,
+    fw: flywheel.Client,
+    protocol: str,
+    project_label: str,
+    sample: bool = False
+) -> None:
+    dir_scratch = PATH_PROJECT / "scratch"
+    dir_tmp = dir_scratch / f"tmp_{project_label}"
+    dir_inner = dir_tmp / "scitran" / "bbl" / project_label
+    dir_final = dir_scratch / project_label
+    dir_tmp.mkdir(parents=True, exist_ok=True)
+    dir_final.mkdir(parents=True, exist_ok=True)
+    remaining_subset = (
+        remaining
+        .loc[remaining["protocol"].eq(protocol), :]
+        .astype({"bblid": "Int64", "scanid": "Int64"})
+        .astype({"bblid": "string", "scanid": "string"})
+        .assign(
+            sub_ses=lambda df: df["bblid"] + "_" + df["scanid"],
+            session_label=lambda df: df["sourceid"].fillna(df["sub_ses"])
         )
+        .loc[:, ["session_label", "sub_ses"]]
     )
-)
+    if sample:
+        remaining_subset = remaining_subset.sample(n=3, random_state=42)
+    for session_label, sub_ses in remaining_subset.itertuples(index=False, name=None):
+        candidate_labels = [session_label, session_label.replace("_", "/")]
+        for candidate_label in candidate_labels:
+            lookup_path = f"bbl/{project_label}/{candidate_label}"
+            try:
+                session = fw.lookup(lookup_path)
+                break
+            except flywheel.rest.ApiException as error:
+                if error.status != 404:
+                    raise
+        else:
+            print(f"Session not found: {', '.join(candidate_labels)}")
+            continue
+        destination = dir_tmp / f"{sub_ses}.zip"
+        fw.download_zip(session, str(destination))
+        with ZipFile(destination, "r") as zip_file:
+            zip_file.extractall(dir_tmp)
+        path_new = dir_final / sub_ses
+        if "/" in candidate_label:
+            path_old = dir_inner / candidate_label
+        else:
+            paths_old = list((dir_inner / candidate_label).iterdir())
+            if len(paths_old) == 1:
+                path_old = paths_old[0]
+            else:
+                raise RuntimeError(f"Expected directory structure violated: {str(dir_inner / candidate_label)}")
+        shutil.move(path_old, path_new)
+    shutil.rmtree(dir_tmp)
 
-for bblid, scanid, session_id in remaining_mind.loc[:, ["bblid", "scanid", "session_id"]].itertuples(index=False, name=None):
-    session = fw.get(session_id)
-    destination = PATH_PROJECT / "scratch" / f"{bblid}_{scanid}.zip"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    fw.download_zip(session, str(destination))
-
-
+for remaining_config in remaining_configs:
+    download_non_bids(remaining, fw, **remaining_config, sample=True)
