@@ -197,7 +197,7 @@ class FreeSurferCleaner():
         return laterality
     @staticmethod
     def find_metric(metric_input, metric_parsed, path):
-        metrics = ["area", "lgi", "meancurv", "thickness", "volume", "wm_volume"]
+        metrics = ["area", "lgi", "meancurv", "thickness", "wm_volume", "volume"]
         if metric_input is not None:
             return metric_input
         if metric_parsed is not None:
