@@ -1,11 +1,12 @@
+#!/usr/bin/env python3
+
+import json
 from pathlib import Path
 
 import flywheel
 import pandas as pd
 
-from curate.sources import LocalSource, FlywheelSource
-
-# TODO: what to do about projects that aren't BIDS'ified? PBN flywheel, MIND local
+from curate.src.curate import LocalSource, FlywheelSource, download_uncurated
 
 # Set constants
 PATH_PROJECT = Path("/") / "project" / "ExtraLong"
@@ -13,17 +14,7 @@ PATH_CODE_DATA = PATH_PROJECT / "code" / "data"
 PATH_API = Path("~").expanduser() / "flywheel_api_key.txt"
 PATH_IMGLOOK = PATH_CODE_DATA / "imglook.csv"
 PATH_DXPMR7 = PATH_CODE_DATA / "n9498_diagnosis_dxpmr7_20170509.csv"
-
-PROJECT_LABELS_1 = [
-    "22q_Midline_834246",
-    "EFR01",
-    "MOTIVE",
-]
-PROJECT_LABELS_2 = [
-    "MIND_856432",
-    "RSVP_855714",
-]
-PROJECT_LABEL_3 = "SSBC_844685"
+PATH_CONFIG = PATH_PROJECT / "code" / "curate" / "config.json"
 
 EXCLUDED_PROTOCOLS = [
     "842909 - TRANSCENDS_D1",
@@ -37,7 +28,22 @@ EXCLUDED_PROTOCOLS = [
 
 LAST_DATAFREEZE = pd.to_datetime("2021-06-30")
 
-# What's expected from imglook?
+# Read inputs and API key
+with open(PATH_CONFIG, "r") as f:
+    config = json.load(f)
+
+with open(PATH_API, "r") as file:
+    api_key = file.read()
+
+# Format paths
+config["inputs_local"] = [
+    {**d, "path": Path(d["path"])} for d in config["inputs_local"]
+]
+
+# instantiate flywheel client
+fw = flywheel.Client(api_key)
+
+# Determine expected scans from imglook
 n9498 = pd.read_csv(
     PATH_DXPMR7,
     usecols=["bblid"],
@@ -62,54 +68,13 @@ imglook = (
     .reset_index(drop=True)
 )
 
-# What's available on bblsub2?
-inputs_local = [
-    {
-        "path": Path("/") / "project" / "bbl_gur_evolpsy",
-        "strategy": "many_to_one",
-        "protocol": "833922 - EvolPsy",
-        "session": "EVOL1",
-    },
-    {
-        "path": Path("/") / "project" / "bbl_gur_pnc" / "data",
-        "strategy": "many_to_many",
-        "protocol": [
-            "810336 - Big GO",
-            "810336 - GO3 FOLLOW UP",
-            "810336 - Go2 Supplement",
-            "810336 - Go3",
-        ],
-        "glob": "*/bids_directory/sub-*/ses-*/anat/*_T1w.nii.gz",
-    },
-    {
-        "path": PATH_PROJECT / "sourcedata",
-        "strategy": "full",
-    },
-]
-
+# Find scans locally available on bblsub2
 local_source = LocalSource(imglook, PATH_PROJECT)
+files_local = local_source.find(config["inputs_local"])
 
-files_local = local_source.find(inputs_local)
-
-LocalSource.download(files_local.sample(n=20, random_state=42))
-
-# What's available on flywheel?
-with open(PATH_API, "r") as file:
-    api_key = file.read()
-
-fw = flywheel.Client(api_key)
-
-inputs_flywheel = [
-    [PROJECT_LABELS_1, 1],
-    [PROJECT_LABELS_2, 2],
-    [PROJECT_LABEL_3, 3],
-]
-
+# Find scans remotely available on flywheel
 flywheel_source = FlywheelSource(fw, imglook, files_local, PATH_PROJECT)
-
-files_flywheel = flywheel_source.find(inputs_flywheel)
-
-FlywheelSource.download(fw, files_flywheel.sample(n=20, random_state=42))
+files_flywheel = flywheel_source.find(config["inputs_flywheel"])
 
 # Summarize remaining
 files_found = (
@@ -130,3 +95,12 @@ remaining = (
 remaining_summary = (
     remaining["protocol"].value_counts().rename_axis("protocol").reset_index(name="n")
 )
+
+# Download scans
+LocalSource.download(files_local.sample(n=3, random_state=42))
+FlywheelSource.download(fw, files_flywheel.sample(n=3, random_state=42))
+if remaining.shape[0] > 0:
+    for input in config["inputs_uncurated"]:
+        download_uncurated(
+            remaining, fw, PATH_PROJECT / "scratch", **input, sample=True
+        )

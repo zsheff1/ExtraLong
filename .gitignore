@@ -3,4 +3,5 @@ logs/
 license.txt
 *.sif
 data/
-__pycache__
+__pycache__/
+*.egg-info/

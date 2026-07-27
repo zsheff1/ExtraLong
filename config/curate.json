@@ -1,0 +1,68 @@
+{
+    "inputs_local": [
+        {
+            "path": "/project/bbl_gur_evolpsy",
+            "strategy": "many_to_one",
+            "protocol": "833922 - EvolPsy",
+            "session": "EVOL1"
+        },
+        {
+            "path": "/project/bbl_gur_pnc/data",
+            "strategy": "many_to_many",
+            "protocol": [
+                "810336 - Big GO",
+                "810336 - GO3 FOLLOW UP",
+                "810336 - Go2 Supplement",
+                "810336 - Go3"
+            ],
+            "glob": "*/bids_directory/sub-*/ses-*/anat/*_T1w.nii.gz"
+        },
+        {
+            "path": "/project/ExtraLong/sourcedata",
+            "strategy": "full"
+        }
+    ],
+    "inputs_flywheel": [
+        [
+            [
+                "22q_Midline_834246",
+                "EFR01",
+                "MOTIVE"
+            ],
+            1
+        ],
+        [
+            [
+                "MIND_856432",
+                "RSVP_855714"
+            ],
+            2
+        ],
+        [
+            "SSBC_844685",
+            3
+        ]
+    ],
+    "inputs_uncurated": [
+        {
+            "protocol": "834246 - 22qmidline",
+            "project_label": "22q_Midline_834246",
+            "heuristic": "heuristic_22qmidline.py"
+        },
+        {
+            "protocol": "856432 - MIND",
+            "project_label": "MIND_856432",
+            "heuristic": "heuristic_mind.py"
+        },
+        {
+            "protocol": "844685 - PBN",
+            "project_label": "SSBC_844685",
+            "heuristic": "heuristic_pbn.py"
+        },
+        {
+            "protocol": "855714 - RSVP",
+            "project_label": "RSVP_855714",
+            "heuristic": "heuristic_rsvp.py"
+        }
+    ]
+}

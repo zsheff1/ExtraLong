@@ -1,0 +1,9 @@
+{
+  "session_id": {
+    "Description": "Session identifier"
+  },
+  "age": {
+    "Description": "Age of participant at time of scan",
+    "Units": "Months"
+  }
+}
