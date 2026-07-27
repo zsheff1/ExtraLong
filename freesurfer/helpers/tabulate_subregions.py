@@ -8,8 +8,8 @@ import re
 
 
 SUB_PATTERN = re.compile(r"sub-\d{6}")
-SES_PATTERN = re.compile(r"ses-\w{3,4}1")
-LONG_PATTERN = re.compile(r"sub-\d{6}_ses-\w{3,4}1\.long\.sub-\d{6}")
+SES_PATTERN = re.compile(r"ses-\d{5}")
+LONG_PATTERN = re.compile(r"sub-\d{6}_ses-\d{5}\.long\.sub-\d{6}")
 
 
 def parse_args():

@@ -1,7 +1,14 @@
 from pathlib import Path
-from shutil import copy2
+import shutil
+import subprocess
+from zipfile import ZipFile
 
 import pandas as pd
+import flywheel
+
+PATH_SCRIPT = Path("/") / "project" / "ExtraLong" / "code" / "curate" / "convert.sh"
+PATH_OUT = Path("/") / "project" / "ExtraLong"
+PATH_HEURISTICS = Path("/") / "project" / "ExtraLong" / "code" / "curate" / "heuristics"
 
 
 def make_path_new(df, root):
@@ -48,7 +55,7 @@ class LocalSource:
     def download(files):
         for source, destination in zip(files["source"], files["destination"]):
             destination.parent.mkdir(parents=True, exist_ok=True)
-            copy2(source, destination)
+            shutil.copy2(source, destination)
 
     @staticmethod
     def query(path, glob):
@@ -177,9 +184,9 @@ class FlywheelSource:
 
     @staticmethod
     def download(fw, files):
-        for acquisition_id, file_name, destination in files.itertuples(
-            index=False, name=None
-        ):
+        for acquisition_id, file_name, destination in files.loc[
+            :, ["acquisition_id", "file_name", "destination"]
+        ].itertuples(index=False, name=None):
             acquisition = fw.get_acquisition(acquisition_id)
             destination.parent.mkdir(parents=True, exist_ok=True)
             acquisition.download_file(file_name, destination)
@@ -347,3 +354,79 @@ class FlywheelSource:
             None,
         )
         return match
+
+
+def download_uncurated(
+    remaining: pd.DataFrame,
+    fw: flywheel.Client,
+    dir_scratch: Path,
+    protocol: str,
+    project_label: str,
+    heuristic: str = None,
+    sample: bool = False,
+) -> None:
+    dir_tmp = dir_scratch / f"tmp_{project_label}"
+    dir_inner = dir_tmp / "scitran" / "bbl" / project_label
+    dir_final = dir_scratch / project_label
+    dir_tmp.mkdir(parents=True, exist_ok=True)
+    dir_final.mkdir(parents=True, exist_ok=True)
+    remaining_subset = (
+        remaining.loc[remaining["protocol"].eq(protocol), :]
+        .astype({"bblid": "Int64", "scanid": "Int64"})
+        .astype({"bblid": "string", "scanid": "string"})
+        .assign(
+            sub_ses=lambda df: df["bblid"] + "_" + df["scanid"],
+            session_label=lambda df: df["sourceid"].fillna(df["sub_ses"]),
+        )
+        .loc[:, ["bblid", "scanid", "session_label", "sub_ses"]]
+    )
+    if sample:
+        remaining_subset = remaining_subset.sample(n=3, random_state=42)
+    for bblid, scanid, session_label, sub_ses in remaining_subset.itertuples(
+        index=False, name=None
+    ):
+        candidate_labels = [session_label, session_label.replace("_", "/")]
+        for candidate_label in candidate_labels:
+            lookup_path = f"bbl/{project_label}/{candidate_label}"
+            try:
+                session = fw.lookup(lookup_path)
+                break
+            except flywheel.rest.ApiException as error:
+                if error.status != 404:
+                    raise
+        else:
+            print(f"Session not found: {', '.join(candidate_labels)}")
+            continue
+        destination = dir_tmp / f"{sub_ses}.zip"
+        fw.download_zip(session, str(destination))
+        with ZipFile(destination, "r") as zip_file:
+            zip_file.extractall(dir_tmp)
+        path_new = dir_final / sub_ses
+        if "/" in candidate_label:
+            path_old = dir_inner / candidate_label
+        else:
+            paths_old = list((dir_inner / candidate_label).iterdir())
+            if len(paths_old) == 1:
+                path_old = paths_old[0]
+            else:
+                raise RuntimeError(
+                    f"Expected directory structure violated: {str(dir_inner / candidate_label)}"
+                )
+        shutil.move(path_old, path_new)
+        subprocess.run(
+            [
+                str(PATH_SCRIPT),
+                "--input",
+                str(path_new),
+                "--output",
+                str(PATH_OUT),
+                "--heuristic",
+                str(PATH_HEURISTICS / heuristic),
+                "--subject",
+                str(bblid).zfill(6),
+                "--session",
+                str(scanid).zfill(5),
+            ],
+            check=True,
+        )
+    shutil.rmtree(dir_tmp)

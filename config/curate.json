@@ -42,5 +42,27 @@
             "SSBC_844685",
             3
         ]
+    ],
+    "inputs_uncurated": [
+        {
+            "protocol": "834246 - 22qmidline",
+            "project_label": "22q_Midline_834246",
+            "heuristic": "heuristic_22qmidline.py"
+        },
+        {
+            "protocol": "856432 - MIND",
+            "project_label": "MIND_856432",
+            "heuristic": "heuristic_mind.py"
+        },
+        {
+            "protocol": "844685 - PBN",
+            "project_label": "SSBC_844685",
+            "heuristic": "heuristic_pbn.py"
+        },
+        {
+            "protocol": "855714 - RSVP",
+            "project_label": "RSVP_855714",
+            "heuristic": "heuristic_rsvp.py"
+        }
     ]
 }

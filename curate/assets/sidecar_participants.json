@@ -1,0 +1,38 @@
+{
+  "participant_id": {
+    "Description": "Participant identifier"
+  },
+  "sex": {
+    "Description": "Participant's self-reported sex",
+    "Levels": {
+      "male": "Participant's sex is male",
+      "female": "Participant's sex is female"
+    }
+  },
+  "race": {
+    "Description": "Participant's self-reported race",
+    "Levels": {
+      "white": "Participant's race is White",
+      "black": "Participant's race is Black",
+      "native_american": "Participant's race is Native American",
+      "asian": "Participant's race is Asian",
+      "biracial": "Participant's race is Biracial",
+      "hawaiian_pacific_islander": "Participant's race is Hawiian / Pacific Islander"
+    }
+  },
+  "ethnic": {
+    "Description": "Participant's self-reported ethnicity",
+    "Levels": {
+      "hispanic": "Participant's ethnicity is Hispanic",
+      "not_hispanic": "Participant's ethnicicty is not Hispanic"
+    }
+  },
+  "handedness": {
+    "Description": "Participant's self-reported handedness",
+    "Levels": {
+      "left": "Participant's handedness is left-handed",
+      "right": "Participant's handedness is right-handed",
+      "ambidextrous": "Participant's handedness is ambidextrous"
+    }
+  }
+}
