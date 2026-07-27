@@ -1,84 +1,75 @@
 {
     "references": {
-        "imglook": {
-            "paths": [
-                "/project/bbl_gur_evolpsy/derivatives/analysis/tmp/imglook_evolution.csv",
-                "/project/bbl_gur_evolpsy/derivatives/analysis/tmp/imglook_GO.csv"
-            ],
-            "map": {
-                "833922 - EvolPsy": "EVOL1",
-                "810336 - Big GO": "PNC1"
-            }
-        },
-        "demographics": "/project/bbl_gur_evolpsy/derivatives/analysis/tmp/demographics.csv",
-        "imaging_qc": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/euler_number.csv",
-        "lobes": "/project/bbl_gur_evolpsy/code/organize/regions_lobes.csv"
+        "imglook": "/project/ExtraLong/code/data/imglook.csv",
+        "demographics": "/project/ExtraLong/code/data/subjects.csv",
+        "imaging_qc": "/project/ExtraLong/derivatives/freesurfer/tables/euler_number.csv",
+        "lobes": "/project/ExtraLong/code/organize/assets/regions_lobes.csv"
     },
     "inputs": [
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_area_lh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_area_lh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_area_rh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_area_rh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aseg_lgi_lh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aseg_lgi_lh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aseg_lgi_rh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aseg_lgi_rh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_meancurv_lh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_meancurv_lh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_meancurv_rh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_meancurv_rh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_thickness_lh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_thickness_lh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_thickness_rh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_thickness_rh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_volume_lh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_volume_lh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aparc_volume_rh.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aparc_volume_rh.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/wmparc_volume.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/wmparc_volume.tsv",
             "atlas": "desikan_killiany"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/lh.hippoSfVolumes.csv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/lh.hippoSfVolumes.csv",
             "atlas": "hippocampus_amygdala"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/rh.hippoSfVolumes.csv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/rh.hippoSfVolumes.csv",
             "atlas": "hippocampus_amygdala"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/lh.amygNucVolumes.csv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/lh.amygNucVolumes.csv",
             "atlas": "hippocampus_amygdala"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/rh.amygNucVolumes.csv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/rh.amygNucVolumes.csv",
             "atlas": "hippocampus_amygdala"
         },
         {
-            "path": "/project/bbl_gur_evolpsy/derivatives/freesurfer_8.2.0_evolpsy/tables/aseg_volume.tsv",
+            "path": "/project/ExtraLong/derivatives/freesurfer/tables/aseg_volume.tsv",
             "atlas": "aseg"
         }
     ],
-    "out_dir": "/project/bbl_gur_evolpsy/derivatives/dataset_evolpsy_long"
+    "out_dir": "/project/ExtraLong/derivatives/dataset"
 }
