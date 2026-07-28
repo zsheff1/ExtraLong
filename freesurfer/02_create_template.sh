@@ -2,20 +2,23 @@
 
 set -euo pipefail
 
-config=${1:?Usage: $0 CONFIG}
-source "$config"
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+code_root=$(cd -- "${script_dir}/.." && pwd)
+
+source "${code_root}/config/project.env"
+source "${code_root}/config/freesurfer.sh"
 
 script_name=$(basename "${BASH_SOURCE[0]}")
 script_stem="${script_name%.sh}"
 
 mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
 
-for sub in $(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'sub-*_ses-*' -printf '%f\n' \
+for sub in $(find "${FREESURFER_DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'sub-*_ses-*' -printf '%f\n' \
     | sed -E 's#(sub-[0-9]{6})_ses-[0-9]{5}#\1#' \
     | sort | uniq -d); do
 
     timepoints=""
-    for ses_dir in "${DATA_DIR}/${sub}"_ses-*; do
+    for ses_dir in "${FREESURFER_DATA_DIR}/${sub}"_ses-*; do
         sub_ses=$(basename "$ses_dir")
         [[ "${sub_ses}" =~ ^sub-[0-9]{6}_ses-[0-9]{5}$ ]] || continue
         timepoints+="-tp ${sub_ses} "
@@ -37,7 +40,7 @@ for sub in $(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name 'sub-*_ses
 	module load apptainer
 
 	apptainer exec --containall \\
-	    --bind "${DATA_DIR}:/data_dir" \\
+	    --bind "${FREESURFER_DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
 	    --pwd /scratch \\

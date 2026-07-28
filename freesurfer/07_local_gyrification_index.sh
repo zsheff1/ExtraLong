@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
-config=${1:?Usage: $0 CONFIG}
-source "$config"
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+code_root=$(cd -- "${script_dir}/.." && pwd)
+
+source "${code_root}/config/project.env"
+source "${code_root}/config/freesurfer.sh"
 
 script_name=$(basename "${BASH_SOURCE[0]}")
 script_stem="${script_name%.sh}"
@@ -38,7 +41,7 @@ while read -r sub_ses; do
 	module load apptainer
 
 	apptainer exec --containall \\
-	    --bind "${DATA_DIR}:/data_dir" \\
+	    --bind "${FREESURFER_DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/commapp/matlab2019b:/commapp/matlab2019b" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\

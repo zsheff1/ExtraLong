@@ -2,18 +2,21 @@
 
 set -euo pipefail
 
-config=${1:?Usage: $0 CONFIG}
-source "$config"
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+code_root=$(cd -- "${script_dir}/.." && pwd)
+
+source "${code_root}/config/project.env"
+source "${code_root}/config/freesurfer.sh"
 
 script_name=$(basename "${BASH_SOURCE[0]}")
 script_stem="${script_name%.sh}"
 
 mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
 
-find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" ! -name "sub-*_ses-*" -printf '%f\n' |
+find "${FREESURFER_DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" ! -name "sub-*_ses-*" -printf '%f\n' |
 while read -r sub; do
 
-    find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "${sub}_ses-*" ! -name "*.long.sub-*" -printf '%f\n' |
+    find "${FREESURFER_DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "${sub}_ses-*" ! -name "*.long.sub-*" -printf '%f\n' |
     while read -r sub_ses; do
 
         ses="${sub_ses#${sub}_}"
@@ -34,7 +37,7 @@ while read -r sub; do
 		module load apptainer
 
 		apptainer exec --containall \\
-		    --bind "${DATA_DIR}:/data_dir" \\
+		    --bind "${FREESURFER_DATA_DIR}:/data_dir" \\
 		    --bind "${LICENSE}:/license.txt" \\
 		    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
 		    --pwd /scratch \\

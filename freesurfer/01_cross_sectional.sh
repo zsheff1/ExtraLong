@@ -2,13 +2,16 @@
 
 set -euo pipefail
 
-config=${1:?Usage: $0 CONFIG}
-source "$config"
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+code_root=$(cd -- "${script_dir}/.." && pwd)
+
+source "${code_root}/config/project.env"
+source "${code_root}/config/freesurfer.sh"
 
 script_name=$(basename "${BASH_SOURCE[0]}")
 script_stem="${script_name%.sh}"
 
-mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${DATA_DIR}"
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${FREESURFER_DATA_DIR}"
 
 # Find all T1w images
 find "${PROJECT_DIR}" -mindepth 4 -maxdepth 4 -type f -path "*/sub-*/ses-*/anat/*T1w.nii.gz" |
@@ -36,7 +39,7 @@ while read -r image; do
 
 	apptainer exec --containall \\
 	    --bind "${image}:/input.nii.gz:ro" \\
-	    --bind "${DATA_DIR}:/data_dir" \\
+	    --bind "${FREESURFER_DATA_DIR}:/data_dir" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
 	    --pwd /scratch \\

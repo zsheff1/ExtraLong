@@ -2,13 +2,16 @@
 
 set -euo pipefail
 
-config=${1:?Usage: $0 CONFIG}
-source "$config"
+source "${code_root}/config/project.env"
+source "${code_root}/config/freesurfer.sh"
 
 script_name=$(basename "${BASH_SOURCE[0]}")
 script_stem="${script_name%.sh}"
 
-mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${DATA_DIR}/tables"
+script_name=$(basename "${BASH_SOURCE[0]}")
+script_stem="${script_name%.sh}"
+
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${FREESURFER_DATA_DIR}/tables"
 
 jobscript_path="${JOBSCRIPT_DIR}/${script_stem}.sh"
 
@@ -21,7 +24,7 @@ cat <<-EOF > "${jobscript_path}"
 module load apptainer
 
 apptainer exec --containall \\
-    --bind "${DATA_DIR}:/data_dir" \\
+    --bind "${FREESURFER_DATA_DIR}:/data_dir" \\
     --bind "${LICENSE}:/license.txt:ro" \\
     --bind "${TABULATE_SUBREGIONS}:/tabulate_subregions.py" \\
     "${CONTAINER}" \\
