@@ -9,7 +9,7 @@ from extralong.curate import Scans
 path_project = Path("/") / "project" / "ExtraLong"
 path_code = path_project / "code"
 path_data = path_code / "data"
-path_sidecars = path_code / "curate" / "sidecars"
+path_assets = path_code / "curate" / "assets"
 path_imglook = path_data / "imglook.csv"
 path_demo = path_data / "subject.csv"
 
@@ -164,4 +164,4 @@ for scan in scans:
 
 # write sidecars
 for level in ["participants", "sessions", "scans"]:
-    shutil.copy2(path_sidecars / f"{level}.json", path_project / f"{level}.json")
+    shutil.copy2(path_assets / f"sidecar_{level}.json", path_project / f"{level}.json")

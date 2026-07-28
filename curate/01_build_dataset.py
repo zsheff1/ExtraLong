@@ -7,15 +7,23 @@ import flywheel
 import pandas as pd
 
 from extralong.curate import LocalSource, FlywheelSource, download_uncurated
+from extralong.config import load_project_paths
 
-# Set constants
-PATH_PROJECT = Path("/") / "project" / "ExtraLong"
-PATH_CODE_DATA = PATH_PROJECT / "code" / "data"
+# Set paths
+paths = load_project_paths()
+
+PATH_PROJECT = paths["PROJECT_DIR"]
+PATH_CODE = paths["CODE_DIR"]
+PATH_CODE_DATA = paths["DATA_DIR"]
+PATH_SCRATCH = paths["SCRATCH_DIR"]
+PATH_CONFIG = paths["CONFIG_DIR"] / "curate.json"
+
 PATH_API = Path("~").expanduser() / "flywheel_api_key.txt"
+
 PATH_IMGLOOK = PATH_CODE_DATA / "imglook.csv"
 PATH_DXPMR7 = PATH_CODE_DATA / "n9498_diagnosis_dxpmr7_20170509.csv"
-PATH_CONFIG = PATH_PROJECT / "code" / "curate" / "config.json"
 
+# Set constants
 EXCLUDED_PROTOCOLS = [
     "842909 - TRANSCENDS_D1",
     "843329 - LongGluCEST",
@@ -101,6 +109,4 @@ LocalSource.download(files_local.sample(n=3, random_state=42))
 FlywheelSource.download(fw, files_flywheel.sample(n=3, random_state=42))
 if remaining.shape[0] > 0:
     for input in config["inputs_uncurated"]:
-        download_uncurated(
-            remaining, fw, PATH_PROJECT / "scratch", **input, sample=True
-        )
+        download_uncurated(remaining, fw, PATH_SCRATCH, **input, sample=True)
