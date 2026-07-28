@@ -6,7 +6,7 @@ from pathlib import Path
 import flywheel
 import pandas as pd
 
-from curate.src.curate import LocalSource, FlywheelSource, download_uncurated
+from extralong.curate import LocalSource, FlywheelSource, download_uncurated
 
 # Set constants
 PATH_PROJECT = Path("/") / "project" / "ExtraLong"

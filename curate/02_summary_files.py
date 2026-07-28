@@ -4,7 +4,7 @@ import shutil
 import pandas as pd
 import numpy as np
 
-from curate.src.curate import Scans
+from extralong.curate import Scans
 
 path_project = Path("/") / "project" / "ExtraLong"
 path_code = path_project / "code"
