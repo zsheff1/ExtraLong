@@ -137,10 +137,10 @@ remaining_summary = (
 
 # Download scans
 logger.info("copying local scans")
-LocalSource.download(files_local.sample(n=3, random_state=42))
+LocalSource.download(files_local)
 logger.info("download flywheel scans")
-FlywheelSource.download(fw, files_flywheel.sample(n=3, random_state=42))
+FlywheelSource.download(fw, files_flywheel)
 if remaining.shape[0] > 0:
     logger.info("downloading uncurated scans")
     for input in config["inputs_uncurated"]:
-        download_uncurated(remaining, fw, PATH_SCRATCH, STEM, **input, sample=True)
+        download_uncurated(remaining, fw, PATH_SCRATCH, STEM, **input)
