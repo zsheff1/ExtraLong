@@ -1,6 +1,7 @@
-from .organize import SubjectsSessions, FreeSurferCleaner
+from .free_surfer_cleaner import FreeSurferCleaner
+from .subjects_sessions import SubjectsSessions
 
 __all__ = [
-    "SubjectsSessions",
     "FreeSurferCleaner",
+    "SubjectsSessions",
 ]

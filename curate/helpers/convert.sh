@@ -2,23 +2,24 @@
 
 set -euo pipefail
 
-script_name=$(basename "${BASH_SOURCE[0]}")
-script_stem="${script_name%.sh}"
+helpers_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(cd -- "${helpers_dir}/.." && pwd)
+code_root=$(cd -- "${script_dir}/.." && pwd)
 
-PROJECT_DIR="/project/ExtraLong"
-CONTAINER="${PROJECT_DIR}/code/containers/heudiconv_1.4.0.sif"
-JOBSCRIPT_DIR="${PROJECT_DIR}/code/jobscripts/${script_stem}"
-LOG_DIR="${PROJECT_DIR}/code/logs/${script_stem}"
+script_base=$(basename -- "${script_dir}")
+
+source "${code_root}/config/project.env"
 
 input=""
 output=""
 heuristic=""
 sub=""
 ses=""
+stem=""
 
 options=$(getopt \
-    --options i:o:h:s:S: \
-    --longoptions input:,output:,heuristic:,subject:,session: \
+    --options i:o:h:s:S:t: \
+    --longoptions input:,output:,heuristic:,subject:,session:,stem: \
     --name "$0" \
     -- "$@"
 ) || exit 64
@@ -47,6 +48,10 @@ while true; do
             ses="$2"
             shift 2
             ;;
+        -t|--stem)
+            stem="$2"
+            shift 2
+            ;;
         --)
             shift
             break
@@ -58,7 +63,7 @@ while true; do
     esac
 done
 
-if [[ -z "${input}" || -z "${output}" || -z "${heuristic}" || -z "${sub}" || -z "${ses}" ]]; then
+if [[ -z "${input}" || -z "${output}" || -z "${heuristic}" || -z "${sub}" || -z "${ses}" || -z "${stem}"]]; then
     cat >&2 <<EOF
 Usage:
   $0 --input DIR --output DIR --heuristic FILE --subject ID --session ID
@@ -69,6 +74,7 @@ Required arguments:
   -h, --heuristic   HeuDiConv heuristic file
   -s, --subject     Six-digit subject ID
   -S, --session     Five-digit session ID
+  -t, --stem        Stem of script that calls it
 EOF
     exit 64
 fi
@@ -92,6 +98,15 @@ if [[ ! "${ses}" =~ ^[0-9]{5}$ ]]; then
     echo "Invalid subject ID: ${sub}" >&2
     exit 64
 fi
+
+if [[! -f "${script_dir}/${stem}.py" ]]; then
+    echo "Stem is not from a real script"
+    exit 64
+fi
+
+CONTAINER="${CONTAINER_DIR}/heudiconv_1.4.0.sif"
+JOBSCRIPT_DIR="${JOBSCRIPT_ROOT}/${script_base}/${stem}"
+LOG_DIR="${LOG_ROOT}/${script_base}/${stem}"
 
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}" "${output}"
 
