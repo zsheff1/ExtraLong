@@ -6,7 +6,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-def make_path_new(df: pd.DataFrame, root: Path) -> pd.Series[Path]:
+def make_path_new(df: pd.DataFrame, root: Path) -> pd.Series:
     """Construct standardized destination paths for imaging sessions.
 
     Each row is converted into a BIDS-style T1-weighted NIfTI path using
