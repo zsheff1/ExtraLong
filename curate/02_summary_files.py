@@ -30,7 +30,7 @@ PATH_LOG.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%S%z",
     filename=PATH_LOG,
-    format="%(asctime)s %(name)s %(funcName)s %(levelname)s %(message)s",
+    format="%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
     level=logging.INFO,
 )
 
