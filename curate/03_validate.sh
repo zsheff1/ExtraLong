@@ -14,6 +14,9 @@ script_root=$(basename "${script_dir}")
 JOBSCRIPT_DIR="${JOBSCRIPT_ROOT}/${script_root}"
 LOG_DIR="${LOG_ROOT}/${script_root}/${script_stem}"
 
+CONFIG="${CODE_DIR}/curate/assets/bids_validator_config.json"
+CONTAINER="${CODE_DIR}/containers/bids_validator_3.0.1.sif"
+
 mkdir -p "${JOBSCRIPT_DIR}" "${LOG_DIR}"
 
 jobscript_path="${JOBSCRIPT_DIR}/${script_stem}.sh"
@@ -27,14 +30,16 @@ cat <<-EOF > "${jobscript_path}"
 module load apptainer
 
 apptainer run --cleanenv \\
--B ${PROJECT_DIR}:${PROJECT_DIR}:ro \\
--B ${CODE_DIR}:${CODE_DIR}:ro \\
-${EXECUTABLE} \\
-${PROJECT_DIR} \\
---config ${CODE_DIR}/curate/assets/bids_validator_config.json \\
---json \\
---verbose \\
---ignoreNiftiHeaders > ${LOG_DIR}/${script_stem}.json
+-B "${PROJECT_DIR}:${PROJECT_DIR}:ro" \\
+-B "${CONFIG}:/bids_validator_config.json:ro" \\
+${CONTAINER} \\
+    ${PROJECT_DIR} \\
+    --config /bids_validator_config.json \\
+    --json \\
+    --verbose \\
+    --ignoreNiftiHeaders \\
+| jq . \\
+> ${LOG_DIR}/${script_stem}.json
 EOF
 
 chmod 755 "${jobscript_path}"
