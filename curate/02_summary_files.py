@@ -25,7 +25,7 @@ PATH_DEMO = PATH_DATA / "subject.csv"
 PATH_LOG = paths["LOG_ROOT"] / Path(__file__).parent.name / f"{Path(__file__).stem}.log"
 
 # set up logging
-PATH_LOG.mkdir(parents=True, exist_ok=True)
+PATH_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%S%z",
