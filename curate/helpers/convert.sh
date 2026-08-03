@@ -63,10 +63,10 @@ while true; do
     esac
 done
 
-if [[ -z "${input}" || -z "${output}" || -z "${heuristic}" || -z "${sub}" || -z "${ses}" || -z "${stem}"]]; then
+if [[ -z "${input}" || -z "${output}" || -z "${heuristic}" || -z "${sub}" || -z "${ses}" || -z "${stem}" ]]; then
     cat >&2 <<EOF
 Usage:
-  $0 --input DIR --output DIR --heuristic FILE --subject ID --session ID
+  $0 --input DIR --output DIR --heuristic FILE --subject ID --session ID --stem NAME
 
 Required arguments:
   -i, --input       Input directory
@@ -95,11 +95,11 @@ if [[ ! "${sub}" =~ ^[0-9]{6}$ ]]; then
 fi
 
 if [[ ! "${ses}" =~ ^[0-9]{5}$ ]]; then
-    echo "Invalid subject ID: ${sub}" >&2
+    echo "Invalid session ID: ${sub}" >&2
     exit 64
 fi
 
-if [[! -f "${script_dir}/${stem}.py" ]]; then
+if [[ ! -f "${script_dir}/${stem}.py" ]]; then
     echo "Stem is not from a real script"
     exit 64
 fi
@@ -114,7 +114,7 @@ jobscript_path="${JOBSCRIPT_DIR}/${sub}_${ses}.sh"
 
 cat <<-EOF > "${jobscript_path}"
 #!/usr/bin/env bash
-#BSUB -J ${script_stem}_sub-${sub}_ses-${ses}
+#BSUB -J ${stem}_sub-${sub}_ses-${ses}
 #BSUB -o ${LOG_DIR}/sub-${sub}_ses-${ses}.o
 #BSUB -e ${LOG_DIR}/sub-${sub}_ses-${ses}.e
 
