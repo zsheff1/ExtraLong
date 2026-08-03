@@ -21,3 +21,9 @@ For each participant, the script creates a sessions file containing the session 
 - Sessions Sidecar: `sessions.json`
 - Scans Summary Files: `sub-*/ses-*/sub-*_ses-*_scans.tsv`
 - Scans Sidecar `scans.json`
+
+## [`03_validate.sh`](03_validate.sh)
+Validates the curated BIDS dataset using the BIDS Validator. Validation settings are defined in `code/curate/assets/bids_validator_config.json`, and the results are saved as a machine-readable JSON report with corresponding standard output and error logs. NIfTI header validation is skipped.
+
+**Output:**
+- BIDS Validator report: `code/logs/curate/03_validate/03_validate.json`
