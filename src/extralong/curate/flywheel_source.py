@@ -1,8 +1,10 @@
 import logging
 from pathlib import Path
+import time
 
 import pandas as pd
 import flywheel
+import requests
 
 from .make_path_new import make_path_new
 
@@ -97,7 +99,7 @@ class FlywheelSource:
         return nii_json
 
     @staticmethod
-    def download(fw: flywheel.Client, files: pd.DataFrame) -> None:
+    def download(fw: flywheel.Client, files: pd.DataFrame, attempts: int = 5) -> None:
         """Download Flywheel files to their destination paths.
 
         Missing destination directories are created automatically before each file is downloaded.
@@ -117,7 +119,21 @@ class FlywheelSource:
 
             acquisition = fw.get_acquisition(acquisition_id)
             destination.parent.mkdir(parents=True, exist_ok=True)
-            acquisition.download_file(file_name, destination)
+            
+            for attempt in range(1, attempts + 1):
+                try:
+                    acquisition.download_file(file_name, destination)
+                    return
+                except requests.exceptions.ConnectionError:
+                    if attempt == attempts:
+                        logger.exception(f"Download failed for {file_name} after {attempts} attempts")
+                        raise
+
+                    delay = 2 ** attempt
+                    logger.warning(f"Download failed for {file_name}; retrying in {delay} seconds (attempt {attempt}/{attempts})")
+
+                    destination.unlink(missing_ok=True)
+                    time.sleep(delay)
 
         logger.info(f"Finished downloading {len(files)} files from Flywheel")
 
