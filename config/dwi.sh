@@ -1,0 +1,29 @@
+WORKFLOW="dwi"
+
+DATA_DIR="${DERIVATIVES_DIR}/${WORKFLOW}"
+
+STATS_DIR="${DATA_DIR}/stats"
+ATLAS_DIR="${DATA_DIR}/atlas"
+ROI_DIR="${ATLAS_DIR}/roi"
+
+JOBSCRIPT_DIR="${JOBSCRIPT_ROOT}/${WORKFLOW}"
+LOG_DIR="${LOG_ROOT}/${WORKFLOW}"
+
+CONTAINER="/appl/containers/qsiprep_1.1.1.sif"
+LICENSE="${CODE_DIR}/freesurfer/assets/license.txt"
+
+TEMPLATEFLOW_HOME="${CODE_DIR}/${WORKFLOW}/assets/templateflow"
+
+NTHREADS=6
+OMP_NTHREADS=4
+
+OUTPUT_RESOLUTION=2
+
+RPI_EXECUTABLE="/project/bbl_projects/apps/melliott/scripts/force_RPI.sh"
+PAD_EXECUTABLE="${CODE_DIR}/${WORKFLOW}/helpers/pad.py"
+PAD_3D="24 24 15 15 21 22"
+PAD_4D="24 24 15 15 21 22 0 0"
+
+FACTOR=1000
+
+THRESHOLD=0.2

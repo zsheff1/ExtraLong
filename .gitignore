@@ -5,3 +5,4 @@ license.txt
 data/
 __pycache__/
 *.egg-info/
+templateflow/
