@@ -18,12 +18,8 @@
 
 ## [`09_roi_generate.sh`](09_roi_generate.sh)
 
-## `10_roi_extract.py`
+## [`10_roi_extract.sh`](10_roi_extract.sh)
 
-## `11_roi_concat.py`
+## [`11_tbss_prestats.sh`](11_tbss_prestats.sh)
 
-## `12_tbss_prestats.py`
-
-## `13_enigma_qc.sh`
-
-## `14_qc.py`
+## `12_qc.sh`
