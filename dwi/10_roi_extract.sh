@@ -11,24 +11,13 @@ source "${code_root}/config/dwi.sh"
 script_name=$(basename "${BASH_SOURCE[0]}")
 script_stem="${script_name%.sh}"
 
-mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
+mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${STATS_DIR}/roi"
 
 find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
 while read -r sub; do
 
     find "${DATA_DIR}/${sub}" -mindepth 1 -maxdepth 1 -type d -name "ses-*" -printf '%f\n' |
     while read -r ses; do
-
-        path="${DATA_DIR}/${sub}/${ses}/dwi"
-
-        dwi_qsi="${path}/${sub}_${ses}_space-ACPC_desc-preproc_dwi.nii.gz"
-        dwi_rpi="${path}/${sub}_${ses}_space-ACPC_desc-rpi_dwi.nii.gz"
-        dwi_pad="${path}/${sub}_${ses}_space-ACPC_desc-pad_dwi.nii.gz"
-        mask_qsi="${path}/${sub}_${ses}_space-ACPC_desc-brain_mask.nii.gz"
-        mask_rpi="${path}/${sub}_${ses}_space-ACPC_desc-rpi_mask.nii.gz"
-        mask_pad="${path}/${sub}_${ses}_space-ACPC_desc-pad_mask.nii.gz"
-
-        [[ -f "${dwi_qsi}" && -f "${mask_qsi}" ]] || continue
 
         jobscript_path="${JOBSCRIPT_DIR}/${script_stem}/${sub}_${ses}.sh"
 
@@ -38,15 +27,26 @@ while read -r sub; do
 		#BSUB -o ${LOG_DIR}/${script_stem}/${sub}_${ses}.o
 		#BSUB -e ${LOG_DIR}/${script_stem}/${sub}_${ses}.e
 
-		module load afni_openmp/20.1
+		module load fsl/6.0.3
 
-		# RPI FLIP
-		${RPI_EXECUTABLE} ${dwi_qsi} ${dwi_rpi}
-		${RPI_EXECUTABLE} ${mask_qsi} ${mask_rpi}
+		output="${STATS_DIR}/roi/${sub}_${ses}.csv"
+		echo "sub,ses,metric,atlas,region,value" > "\${output}"
 
-		# PADDING
-		${PAD_EXECUTABLE} ${dwi_rpi} ${dwi_pad} ${PAD_4D}
-		${PAD_EXECUTABLE} ${mask_rpi} ${mask_pad} ${PAD_3D}
+		for metric in ad fa md rd; do
+
+		    target_image="${DATA_DIR}/${sub}/${ses}/dwi/${sub}_${ses}_diffeo_\${metric}.nii.gz"
+		    [[ -f "\${target_image}" ]] || continue
+
+		    for roi in "${ROI_DIR}"/roi*.nii.gz; do
+
+		        [[ "\${roi}" =~ roi_([a-z]+)_([0-9]+)\.nii\.gz$ ]]
+		        atlas="\${BASH_REMATCH[1]}"
+		        region="\${BASH_REMATCH[2]}"
+
+		        value=\$(fslstats "\${target_image}" -k "\${roi}" -M)
+		        echo "${sub},${ses},\${metric},\${atlas},\${region},\${value}" >> "\${output}"
+		    done
+		done
 		EOF
 
         chmod 775 "${jobscript_path}"
