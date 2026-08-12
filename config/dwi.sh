@@ -5,6 +5,10 @@ DATA_DIR="${DERIVATIVES_DIR}/${WORKFLOW}"
 STATS_DIR="${DATA_DIR}/stats"
 ATLAS_DIR="${DATA_DIR}/atlas"
 ROI_DIR="${ATLAS_DIR}/roi"
+TEMPLATE_DIR="${DATA_DIR}/template"
+BUILD_DIR="${TEMPLATE_DIR}/build"
+SUBS_FILE="${BUILD_DIR}/subs.txt"
+SELECT_DIR="${TEMPLATE_DIR}/select"
 
 JOBSCRIPT_DIR="${JOBSCRIPT_ROOT}/${WORKFLOW}"
 LOG_DIR="${LOG_ROOT}/${WORKFLOW}"
@@ -13,6 +17,7 @@ CONTAINER="/appl/containers/qsiprep_1.1.1.sif"
 LICENSE="${CODE_DIR}/freesurfer/assets/license.txt"
 
 TEMPLATEFLOW_HOME="${CODE_DIR}/${WORKFLOW}/assets/templateflow"
+INITIAL_TEMPLATE="${CODE_DIR}/data/go1_n14_template.nii.gz"
 
 NTHREADS=6
 OMP_NTHREADS=4
@@ -23,6 +28,7 @@ RPI_EXECUTABLE="/project/bbl_projects/apps/melliott/scripts/force_RPI.sh"
 PAD_EXECUTABLE="${CODE_DIR}/${WORKFLOW}/helpers/pad.py"
 PAD_3D="24 24 15 15 21 22"
 PAD_4D="24 24 15 15 21 22 0 0"
+PAD_TEMPLATE="24 24 15 15 21 22 0 0 0 0"
 
 FACTOR=1000
 

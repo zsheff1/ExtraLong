@@ -7,6 +7,7 @@ import nibabel as nib
 import re
 import shutil
 import logging
+from pathlib import Path
 
 RAW_DIR = '/project/bbl_gur_evolpsy'
 DWI_DIR = '/project/bbl_gur_evolpsy/derivatives/dwi'
@@ -74,41 +75,70 @@ for session in glob.glob(os.path.join(SESSIONS_PATH)):
     df['participant_id'] = sub
     df = df[['participant_id', 'session_id', 'age']]
     dfs.append(df)
-
 sessions = pd.concat(dfs, ignore_index = True)
+
 logging.info('read participants.tsv')
 participants = pd.read_csv(PARTICIPANTS_PATH, sep='\t')
-logging.info('combine participants and sessions into images')
-images = sessions.merge(participants, how = 'left', on = 'participant_id')
-images = images.rename(columns={'participant_id': 'sub', 'session_id': 'ses'})
+
 logging.info('read qc.tsv')
-qc = pd.read_csv(QC_PATH, sep='\t')
-qc = qc.rename(columns={'dwi_tsnr_b0': 'qc'})
-logging.info('add qc info to images dataframe')
-images = images.merge(qc, how = 'left', on = ['sub', 'ses'])
-logging.info('define relevant paths for each sub_ses')
-images['dtitk_path'] = images.apply(lambda row: f"{DWI_DIR}/{row['sub']}/{row['ses']}/dwi/{row['sub']}_{row['ses']}.nii.gz", axis=1)
-images['fa_path'] = images.apply(lambda row: f"{DWI_DIR}/{row['sub']}/{row['ses']}/dwi/{row['sub']}_{row['ses']}_FA.nii.gz", axis=1)
-images['qsiprep_path'] = images.apply(lambda row: f"{DWI_DIR}/{row['sub']}/{row['ses']}/dwi/{row['sub']}_{row['ses']}_space-ACPC_desc-preproc_dwi.nii.gz", axis=1)
-logging.info('remove those sub_ses where the corresponding dtitk preprocessed image doesn\'t exist')
-images = images[images['dtitk_path'].apply(os.path.exists)]
-logging.info('read in the number of volumes for each qsiprep preprocessed image and remove those images where the number of volumes imply that it\'s only run-01 of ses-PNC1 missing run-02')
-images['volumes'] = [nib.load(path).shape[3] for path in images['qsiprep_path']]
-images = images[images['volumes'] > 35]
-logging.info('for each sub_ses check if the corresponding fieldmaps exist and remove those sub_ses without a full compliment of fieldmaps')
-images['fieldmap'] = images.apply(check_fieldmap, axis=1)
-images = images[images['fieldmap']]
-logging.info('creats age bins of 2 years (8 year old age bin is seperate) and combine with sex to find template bins')
-bin_size = 2
-images['age_bin'] = pd.cut(
-    images['age'],
-    bins=range(min(images['age']) - bin_size , max(images['age']) + bin_size, bin_size)
+qc = (
+    pd.read_csv(QC_PATH, sep='\t')
+    .rename(columns={'dwi_tsnr_b0': 'qc'})
+    .loc[:, ["sub", "ses", "qc"]]
 )
-images['bin'] = images['sex'].map({'male': 'm', 'female': 'f'}) + '-' + images['age_bin'].astype(str).str.replace(r'[\(\)\[\]]', '', regex=True).str.split(', ').apply(lambda pair: f"{str(int(pair[0]) + 1).zfill(2)}-{pair[1].zfill(2)}").str.replace(r'^07-', '', regex=True)
+
+logging.info('combine participants sessions, and qc into images')
+images = (
+    sessions
+    .merge(participants, how = 'left', on = 'participant_id')
+    .rename(columns={'participant_id': 'sub', 'session_id': 'ses'})
+    .loc[:, ["sub", "ses", "age", "sex"]]
+    .merge(qc, how = 'left', on = ['sub', 'ses'])
+)
+
+logging.info('define relevant paths for each sub_ses')
+logging.info('remove those sub_ses where the corresponding dtitk preprocessed image doesn\'t exist')
+images = (
+    images
+    .assign(
+        dtitk_path=lambda df: Path(DWI_DIR) / df["sub"] / df["ses"] / "dwi" / (df["sub"] + "_" + df["ses"] + ".nii.gz"),
+        fa_path=lambda df: Path(DWI_DIR) / df["sub"] / df["ses"] / "dwi" / (df["sub"] + "_" + df["ses"] + "_FA.nii.gz"),
+        qsiprep_path=lambda df: Path(DWI_DIR) / df["sub"] / df["ses"] / "dwi" / (df["sub"] + "_" + df["ses"] + "_space-ACPC_desc-preproc_dwi.nii.gz")
+    )
+    .loc[lambda df: df["dtitk_path"].map(Path.exists)]
+)
+
+logging.info('read in the number of volumes for each qsiprep preprocessed image and remove those images where the number of volumes imply that it\'s only run-01 of ses-PNC1 missing run-02')
+images = (
+    images
+    .assign(
+        volumes=lambda df: df["qsiprep_path"].map(
+            lambda path: nib.load(path).shape[3]
+        )
+    )
+    .loc[lambda df: df["volumes"].gt(35)]
+)
+
+logging.info('for each sub_ses check if the corresponding fieldmaps exist and remove those sub_ses without a full compliment of fieldmaps')
+images = (
+    images
+    .assign(
+        fieldmap=lambda df: df.apply(check_fieldmap, axis=1)
+    )
+    .loc[lambda df: df["fieldmap"]]
+)
+
+logging.info('creats age bins of 2 years (8 year old age bin is seperate) and combine with sex to find template bins')
 logging.info('subset to only be those columns we care about moving forward')
-images = images[['bin', 'qc', 'dtitk_path', 'fa_path']]
 logging.info('within each bin determine which images move forward directly to dtitk template creation and which move forward to TBSS selection')
-images = images.groupby('bin', group_keys=False).apply(lambda g: select_from_bin(g, g.name), include_groups=False)
+images = (
+    images
+    .assign(bin = lambda df: df["age"].astype("str").str.zfill(2) + df["sex"].str[0])
+    .loc[:, ['bin', 'qc', 'dtitk_path', 'fa_path']]
+    .groupby('bin', group_keys=False)
+    .apply(lambda g: select_from_bin(g, g.name), include_groups=False)
+)
+
 logging.info('for those bins where there aren\'t enough images to run the TBSS pipeline pick the image with highest QC and move directly to dtitk template creation')
 for _, image in images[images['select_dtitk']].iterrows():
     shutil.copy(image['dtitk_path'], BUILD_DIR)
