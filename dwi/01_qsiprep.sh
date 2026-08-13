@@ -36,11 +36,11 @@ while read -r sub; do
 
 	apptainer run --containall \\
 	    --bind "${PROJECT_DIR}:/input:ro" \\
-	    --bind "${DATA_DIR}:/output" \\
+	    --bind "${DWI_DIR}:/output" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
-		--bind "${TEMPLATEFLOW_HOME}:/templateflow:ro" \\
-		--env TEMPLATEFLOW_HOME="/templateflow" \\
+	    --bind "${TEMPLATEFLOW_HOME}:/templateflow:ro" \\
+	    --env TEMPLATEFLOW_HOME="/templateflow" \\
 	    "${CONTAINER}" \\
 	    /input /output participant \\
 	    --participant-label ${sub} \\

@@ -1,11 +1,7 @@
-#!/bin/bash
-#BSUB -o /project/bbl_gur_evolpsy/code/logs/dwi/tbss/enigma_qc.o
-#BSUB -e /project/bbl_gur_evolpsy/code/logs/dwi/tbss/enigma_qc.e
-#BSUB -J enigma_qc
-
 get_mean_projection_distance() {
+    module load fsl/6.0.3
+
     local scratch_base=""
-    local fsl_dir=""
     local fa_map=""
     local mean_fa=""
     local dst_map=""
@@ -13,8 +9,8 @@ get_mean_projection_distance() {
 
     local options
     options=$(getopt \
-        --options s:d:f:F:D:m: \
-        --longoptions scratch:,fsl_dir:,fa_map:,mean_fa:,dst_map:,mask: \
+        --options s:f:F:d:m: \
+        --longoptions scratch:,fa_map:,mean_fa:,dst_map:,mask: \
         --name "$0" \
         -- "$@"
     ) || return 64
@@ -27,10 +23,6 @@ get_mean_projection_distance() {
                 scratch_base="$2"
                 shift 2
                 ;;
-            -d|--fsl_dir)
-                fsl_dir="$2"
-                shift 2
-                ;;
             -f|--fa_map)
                 fa_map="$2"
                 shift 2
@@ -39,7 +31,7 @@ get_mean_projection_distance() {
                 mean_fa="$2"
                 shift 2
                 ;;
-            -D|--dst_map)
+            -d|--dst_map)
                 dst_map="$2"
                 shift 2
                 ;;
@@ -58,7 +50,7 @@ get_mean_projection_distance() {
         esac
     done
 
-    if [[ -z "${scratch_base}" || -z "${fsl_dir}" || -z "${fa_map}" || -z "${mean_fa}" || -z "${dst_map}" || -z "${mask}" ]]; then
+    if [[ -z "${scratch_base}" || -z "${fa_map}" || -z "${mean_fa}" || -z "${dst_map}" || -z "${mask}" ]]; then
         return 64
     fi
 
@@ -72,7 +64,7 @@ get_mean_projection_distance() {
         -i "${mean_fa}" \
         -p 0.2 \
         "${dst_map}" \
-        "${fsl_dir}/data/standard/LowerCingulum_1mm" \
+        "${FSLDIR}/data/standard/LowerCingulum_1mm" \
         "${fa_map}" \
         "${scratch_dir}/dst_vals"
 
@@ -100,6 +92,7 @@ get_mean_projection_distance() {
 }
 
 get_volumes() {
+    module load fsl/6.0.3
     local image=""
 
     local options
@@ -139,6 +132,9 @@ get_volumes() {
 }
 
 get_tsnr_b0() {
+    module load fsl/6.0.3
+    module load afni_openmp/20.1
+
     local scratch_base=""
     local raw=""
 
@@ -216,59 +212,3 @@ get_tsnr_b0() {
     read -r _ tsnr_b0 < <(grep "tsnr_b0" "${scratch_dir}/results.txt")
     echo "${tsnr_b0}"
 }
-
-# Emma Sprooten for ENIGMA-DTI
-# run in a new directory eg. Proj_Dist/
-# create a text file containing paths to your masked FA maps
-# output in Proj_Dist.txt
-
-module load fsl/6.0.3
-
-###### USER INPUTS ###############
-## insert main folder where you ran TBSS
-## just above "stats/" and "FA/"
-maindir="/project/bbl_gur_evolpsy/derivatives/dwi"
-
-## insert full path to mean_FA, skeleton mask and distance map
-## based on ENIGMA-DTI protocol this should be:
-mean_fa="${maindir}/stats/mean_FA.nii.gz"
-mask="${maindir}/stats/mean_FA_skeleton_mask.nii.gz"
-dst_map="${maindir}/stats/mean_FA_skeleton_mask_dst.nii.gz"
-
-##############
-### from here it should be working without further adjustments
-
-echo "participant_id,session_id,mean_projection_distance,volumes,tsnr_b0" > "${maindir}/stats/proj_dist.csv"
-
-## for each FA map
-while read -r sub; do
-
-    base=$(basename "${sub}" ".nii.gz")
-    [[ base =~ sub-([0-9]{6})_ses-([0-9]{5}) ]]
-    participant_id="${BASH_REMATCH[1]}"
-    session_id="${BASH_REMATCH[2]}"
-
-    fa_map="${sub%%.nii.gz}_fa.nii.gz"
-    preproc="${sub%%_diffeo.nii.gz}_space-ACPC_desc-preproc_dwi.nii.gz"
-
-    mean_projection_distance=$(
-        get_mean_projection_distance \
-        --scratch "/scratch" \
-        --fsl_dir "${FSLDIR}" \
-        --fa_map "${fa_map}" \
-        --mean_fa "${mean_fa}" \
-        --dst_map "${dst_map}" \
-        --mask "${mask}" \
-    )
-    volumes=$(
-        get_volumes \
-        --image "${preproc}"
-    )
-    tsnr_b0=$(
-        get_tsnr_b0 \
-        --scratch "\scratch" \
-        --raw "${DATA_DIR}/${sub}/${ses}/dwi"
-    )
-
-    echo "${participant_id},${session_id},${mean_projection_distance},${volumes},${tsnr_b0}" >> "${maindir}/stats/proj_dist.csv"
-done < "${SUBJECTSFILE}"

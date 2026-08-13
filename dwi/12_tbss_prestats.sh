@@ -24,23 +24,23 @@ cat <<-EOF > "${jobscript_path}"
 module load dtitk/2.3.1
 module load fsl/6.0.3
 
-cd "${DATA_DIR}"
+cd "${DWI_DIR}"
 
 tbss_skeleton \\
-    -i "${DATA_DIR}/stats/mean_FA.nii.gz" \\
-    -o "${DATA_DIR}/stats/mean_FA_skeleton.nii.gz"
+    -i "${DWI_DIR}/stats/mean_FA.nii.gz" \\
+    -o "${DWI_DIR}/stats/mean_FA_skeleton.nii.gz"
 
 tbss_4_prestats "${THRESHOLD}"
 
 for metric in AD MD RD; do
     tbss_skeleton \\
-    -i "${DATA_DIR}/stats/mean_FA.nii.gz" \\
-    -o "${DATA_DIR}/stats/mean_\${metric}_skeleton.nii.gz" \\
+    -i "${DWI_DIR}/stats/mean_FA.nii.gz" \\
+    -o "${DWI_DIR}/stats/mean_\${metric}_skeleton.nii.gz" \\
     -p "${THRESHOLD}" \\
-    "${DATA_DIR}/stats/mean_FA_skeleton_mask_dst.nii.gz" \\
-    "${DATA_DIR}/stats/mean_FA.nii.gz" \\
-    "${DATA_DIR}/stats/all_\${metric}.nii.gz" \\
-    "${DATA_DIR}/stats/all_\${metric}_skeletonised.nii.gz"
+    "${DWI_DIR}/stats/mean_FA_skeleton_mask_dst.nii.gz" \\
+    "${DWI_DIR}/stats/mean_FA.nii.gz" \\
+    "${DWI_DIR}/stats/all_\${metric}.nii.gz" \\
+    "${DWI_DIR}/stats/all_\${metric}_skeletonised.nii.gz"
 done
 EOF
 

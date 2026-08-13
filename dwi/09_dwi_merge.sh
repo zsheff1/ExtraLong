@@ -13,11 +13,11 @@ script_stem="${script_name%.sh}"
 
 mkdir -p "${STATS_DIR}" "${LOG_DIR}/${script_stem}"
 
-find "${DATA_DIR}" \
+find "${DWI_DIR}" \
     -mindepth 4 \
     -maxdepth 4 \
     -type f \
-    -path "${DATA_DIR}/sub-*/ses-*/dwi/sub-*_ses-*_diffeo.nii.gz" \
+    -path "${DWI_DIR}/sub-*/ses-*/dwi/sub-*_ses-*_diffeo.nii.gz" \
     ! -name "*_aff_diffeo*" \
     -print |
 sort > "${STATS_DIR}/subs.txt"

@@ -13,13 +13,13 @@ script_stem="${script_name%.sh}"
 
 mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
 
-find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
+find "${DWI_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
 while read -r sub; do
 
-    find "${DATA_DIR}/${sub}" -mindepth 1 -maxdepth 1 -type d -name "ses-*" -printf '%f\n' |
+    find "${DWI_DIR}/${sub}" -mindepth 1 -maxdepth 1 -type d -name "ses-*" -printf '%f\n' |
     while read -r ses; do
 
-        path="${DATA_DIR}/${sub}/${ses}/dwi"
+        path="${DWI_DIR}/${sub}/${ses}/dwi"
 
         dwi="${path}/${sub}_${ses}_space-ACPC_desc-pad_dwi.nii.gz"
         mask="${path}/${sub}_${ses}_space-ACPC_desc-pad_mask.nii.gz"

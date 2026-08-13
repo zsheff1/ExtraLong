@@ -13,10 +13,10 @@ script_stem="${script_name%.sh}"
 
 mkdir -p "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}" "${STATS_DIR}/roi"
 
-find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
+find "${DWI_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
 while read -r sub; do
 
-    find "${DATA_DIR}/${sub}" -mindepth 1 -maxdepth 1 -type d -name "ses-*" -printf '%f\n' |
+    find "${DWI_DIR}/${sub}" -mindepth 1 -maxdepth 1 -type d -name "ses-*" -printf '%f\n' |
     while read -r ses; do
 
         jobscript_path="${JOBSCRIPT_DIR}/${script_stem}/${sub}_${ses}.sh"
@@ -34,7 +34,7 @@ while read -r sub; do
 
 		for metric in ad fa md rd; do
 
-		    target_image="${DATA_DIR}/${sub}/${ses}/dwi/${sub}_${ses}_diffeo_\${metric}.nii.gz"
+		    target_image="${DWI_DIR}/${sub}/${ses}/dwi/${sub}_${ses}_diffeo_\${metric}.nii.gz"
 		    [[ -f "\${target_image}" ]] || continue
 
 		    for roi in "${ROI_DIR}"/roi*.nii.gz; do
