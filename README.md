@@ -1,4 +1,6 @@
 # Extra Long
-This repository [creates a BIDS dataset of T1-weighted structural MRI images](curate/README.md), [processes them using the FreeSurfer 8.2.0 `recon-all` pipeline](freesurfer/README.md), and [organizes the resulting output](organize/README.md). The dataset comprises longitudinal imaging collected across several developmental studies at the Brain Behavior Laboratory from participants in the Philadelphia Neurodevelopmental Cohort.
+This repository builds and processes a longitudinal neuroimaging dataset comprising data collected across several developmental studies at the Brain Behavior Laboratory from participants in the Philadelphia Neurodevelopmental Cohort. The project [curates source imaging data into a BIDS dataset](curate/README.md), [processes T1-weighted structural MRI data using FreeSurfer 8.2.0](freesurfer/README.md), [processes diffusion-weighted MRI data using QSIPrep, FSL, DTI-TK, and TBSS](dwi/README.md), and [organizes the resulting imaging derivatives for downstream analysis](organize/README.md).
 
-In subsequent READMEs, descriptive paths are relative to `/project/ExtraLong/` and paths in usage instructions are relative to `/project/ExtraLong/code/`.
+The workflow is organized into modular processing stages, with each subdirectory containing its own README describing the corresponding scripts, processing steps, and outputs. Together, these workflows provide a reproducible pipeline from dataset curation through structural and diffusion MRI processing to analysis-ready derivative datasets.
+
+In subsequent READMEs, descriptive paths are relative to `/project/ExtraLong/`, while paths in usage instructions are relative to `/project/ExtraLong/code/`.
