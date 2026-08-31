@@ -177,8 +177,8 @@ get_tsnr_b0() {
     scratch_dir=$(mktemp -d "${scratch_base}_XXXXXX")
 	trap 'rm -rf "${scratch_dir}"' RETURN
 
-    module load fsl
-    module load afni_openmp
+    module load fsl/6.0.3
+    module load afni_openmp/20.1
 
     ulimit -c 0
 
