@@ -33,7 +33,7 @@ while read -r participant_id; do
         tsnr_b0=$(
             get_tsnr_b0 \
             --scratch "${SCRATCH_DIR}" \
-            --raw "${PROJECT_DIR}/${participant_id}/${session_id}/dwi"
+            --raw "${PROJECT_DIR}/dwi/${participant_id}/${session_id}/dwi"
         )
 
         echo "${participant_id},${session_id},${volumes}" >> "${path_volumes}"

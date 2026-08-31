@@ -13,10 +13,10 @@ script_stem="${script_name%.sh}"
 
 mkdir -p "${DATA_DIR}" "${TEMPLATEFLOW_HOME}" "${JOBSCRIPT_DIR}/${script_stem}" "${LOG_DIR}/${script_stem}"
 
-find "${PROJECT_DIR}" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
+find "${PROJECT_DIR}/dwi" -mindepth 1 -maxdepth 1 -type d -name "sub-*" -printf '%f\n' |
 while read -r sub; do
 
-	dwi_dir=$(find "${PROJECT_DIR}/${sub}" -mindepth 3 -maxdepth 3 -type f -name "*_dwi.nii.gz")
+	dwi_dir=$(find "${PROJECT_DIR}/dwi/${sub}" -mindepth 3 -maxdepth 3 -type f -name "*_dwi.nii.gz")
 	[[ -n ${dwi_dir} ]] || continue
 
     jobscript_path="${JOBSCRIPT_DIR}/${script_stem}/${sub}.sh"
@@ -35,7 +35,7 @@ while read -r sub; do
 	module load apptainer
 
 	apptainer run --containall \\
-	    --bind "${PROJECT_DIR}:/input:ro" \\
+	    --bind "${PROJECT_DIR}/dwi:/input:ro" \\
 	    --bind "${DWI_DIR}:/output" \\
 	    --bind "/scratch/\$USER/\$LSB_JOBID:/scratch" \\
 	    --bind "${LICENSE}:/license.txt:ro" \\
